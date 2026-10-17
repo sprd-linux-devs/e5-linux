@@ -16,13 +16,19 @@ def checksum(path):
 
 def sources(version):
     files = [TOP / 'openwrt/build-modemmanager.sh', TOP / 'device/openwrt_device_common/tests/voice-identity.py',
-             TOP / 'device/openwrt_device_common/tests/sim-power.py', TOP / 'device/openwrt_device_common/tests/voice-urc.py',
-             TOP / 'device/openwrt_device_common/tests/voice-recovery.py', TOP / 'device/openwrt_device_common/tests/data-priority-hook.py',
+             TOP / 'device/openwrt_device_common/tests/sim-power.py', TOP / 'device/openwrt_device_common/tests/sim-events.py', TOP / 'device/openwrt_device_common/tests/voice-urc.py',
+             TOP / 'device/openwrt_device_common/tests/voice-recovery.py', TOP / 'device/openwrt_device_common/tests/voice-hangup.py', TOP / 'device/openwrt_device_common/tests/data-priority-hook.py',
              TOP / 'device/openwrt_device_common/tests/modem-mobility.py',
+             TOP / 'device/openwrt_device_common/tests/modem-data-ports.py',
+             TOP / 'device/openwrt_device_common/tests/modem-data-port-rules.py',
+             TOP / 'device/openwrt_device_common/tests/sim-radio-parser.py',
              TOP / 'device/openwrt_device_common/files/modemmanager-unisoc-renew',
              TOP / 'device/openwrt_device_common/shared/network-startup.py',
              TOP / 'device/openwrt_device_common/shared/network-startup-defaults',
              TOP / 'device/openwrt_device_common/overlay/usr/libexec/e5-mm-report-ports',
+             TOP / 'device/openwrt_device_common/overlay/etc/hotplug.d/wwan/26-e5-sipa-eth',
+             TOP / 'device/openwrt_device_common/overlay/usr/libexec/e5-network-recovery',
+             TOP / 'device/openwrt_device_common/overlay/etc/init.d/e5-network-recovery',
              Path(__file__).resolve()]
     files += sorted((TOP / 'device/debian_device_common/patches').glob('modemmanager-[0-9][0-9]-*.patch'))
     files += sorted((TOP / 'openwrt/patches').glob('modemmanager-package-*.patch'))

@@ -4,7 +4,7 @@ package directory (net/modemmanager) by openwrt/build-modemmanager.sh.
 
 --- a/files/usr/share/ModemManager/modemmanager.common
 +++ b/files/usr/share/ModemManager/modemmanager.common
-@@ -138,6 +138,16 @@
+@@ -138,6 +138,23 @@
  				;;
  			"mbimmux"*)
  				mm_log "debug" "mbim vlan netdevice $name"
@@ -16,8 +16,23 @@ package directory (net/modemmanager) by openwrt/build-modemmanager.sh.
 +				# probes a net port that comes alone, fails, and forgets it,
 +				# and the modem later comes up without its data port.  The
 +				# AT port's hotplug reports it again once it appears.
-+				ls -d /sys/class/wwan/wwan*at* >/dev/null 2>&1 || return 1
++				if [ "$action" != remove ]; then
++					ls -d /sys/class/wwan/wwan*at* >/dev/null 2>&1 || return 1
++					# Do not block removal of the previous SIM's ports.
++					case "$(cat /sys/module/sipc_wwan/parameters/card 2>/dev/null):$name" in
++						0:sipa_eth[0-7]|1:sipa_eth[89]|1:sipa_eth1[0-5]) ;;
++						*) return 1 ;;
++					esac
++				fi
 +				mm_log "debug" "unisoc sipa netdevice $name"
  				;;
  			*)
  				return 1
+--- a/Makefile
++++ b/Makefile
+@@ -166,1 +166,5 @@
++	$(INSTALL_DATA) ./files/etc/hotplug.d/wwan/26-e5-sipa-eth $(1)/etc/hotplug.d/wwan
++	$(INSTALL_DIR) $(1)/usr/libexec
++	$(INSTALL_BIN) ./files/usr/libexec/e5-mm-report-ports $(1)/usr/libexec
++
+ ifeq ($(CONFIG_MODEMMANAGER_WITH_NETIFD),y)

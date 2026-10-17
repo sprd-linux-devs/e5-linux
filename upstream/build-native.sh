@@ -26,6 +26,7 @@ echo "== cross gcc $("$X"gcc -dumpversion) ($X)"
 
 cd "$K"
 python3 "$TOP/device/linux_device_common/kernel/display.py" .
+python3 "$TOP/device/linux_device_common/kernel/power.py" .
 python3 "$TOP/device/linux_device_common/kernel/emmc.py" .
 python3 "$TOP/device/linux_device_common/kernel/eic.py" .
 python3 "$TOP/device/linux_device_common/kernel/thermal.py" .
@@ -33,6 +34,7 @@ python3 "$TOP/device/linux_device_common/kernel/sipa.py" .
 python3 "$TOP/device/linux_device_common/kernel/wifi-tx.py" .
 python3 "$TOP/device/linux_device_common/kernel/fuel-gauge.py" .
 python3 "$TOP/device/linux_device_common/kernel/wifi-sae.py" .
+python3 "$TOP/device/linux_device_common/kernel/wifi-stations.py" .
 KV=$(make -s kernelversion)
 O="${E5_OUTDIR:-$TOP/work/build/$KV}"
 mkdir -p "$O"

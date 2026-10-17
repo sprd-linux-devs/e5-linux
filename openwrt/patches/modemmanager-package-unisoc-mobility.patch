@@ -8,11 +8,25 @@ cycling the bearer. A low-rate consistency check covers lost notifications.
 diff -ruN a/Makefile b/Makefile
 --- a/Makefile	2026-10-12 19:49:59.000628219 +0800
 +++ b/Makefile	2026-10-13 15:27:56.441438296 +0800
-@@ -117,6 +117,7 @@
+@@ -42,6 +42,8 @@
+ 	$(INTL_DEPENDS) \
+ 	+glib2 \
+ 	+dbus \
++	+dbus-utils \
++	+python3 \
+ 	+ppp \
+ 	+MODEMMANAGER_WITH_MBIM:libmbim \
+ 	+MODEMMANAGER_WITH_QMI:libqmi \
+@@ -117,6 +117,12 @@
  	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/ModemManager $(1)/usr/sbin
  	$(INSTALL_BIN) ./files/usr/sbin/ModemManager-wrapper $(1)/usr/sbin
  	$(INSTALL_BIN) ./files/usr/sbin/ModemManager-monitor $(1)/usr/sbin
 +	$(INSTALL_BIN) ./files/usr/sbin/modemmanager-unisoc-renew $(1)/usr/sbin
++	$(INSTALL_DIR) $(1)/usr/libexec $(1)/etc/init.d $(1)/etc/rc.d
++	$(INSTALL_BIN) ./files/usr/libexec/e5-network-recovery $(1)/usr/libexec
++	$(INSTALL_BIN) ./files/etc/init.d/e5-network-recovery $(1)/etc/init.d
++	$(LN) ../init.d/e5-network-recovery $(1)/etc/rc.d/S96e5-network-recovery
++	$(LN) ../init.d/e5-network-recovery $(1)/etc/rc.d/K10e5-network-recovery
  
  	$(INSTALL_DIR) $(1)/usr/bin
  	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/mmcli $(1)/usr/bin

@@ -56,7 +56,19 @@ set -euo pipefail
 # 20: isolate ambiguous dual-SIM CMTI indices and restore scoped SMS AT context.
 # 21: keep compound SMS prompt transactions out of context restoration.
 # 22: fail on invalid power/mode readback and failed activation prerequisites.
-E5REV=22
+# 23: retry transient first registration/PDP/IP failures with cancellable backoff.
+# 25: PS registration events resume offline data setup without losing autostart.
+# 26: stock indexed call release; failed hangup remains visible and retryable.
+# 27: stock ECIND SIM events through the existing MM owner; no SIM polling.
+# 28: retry registration-cancelled setup; cycle PDP backoff through 1/3/5/7 s.
+# 29: alphanumeric APN identities and all PDP ports in the selected SIM bank.
+# 30: persistent per-slot RF permission, respected by cold/warm power-up.
+# 31: exact SIPA rules compatible with MM's restricted non-udev matcher.
+# 32: netifd availability wait for an explicitly disabled data SIM.
+# 33: data teardown preserves RF by default; explicit disable_modem wins.
+# 34: keep the logical modem enabled for the other SIM's voice/SMS when the
+# data radio is off, without powering that disabled data radio back on.
+E5REV=34
 VER=${E5_WRT_VER:-25.12.5}
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TOP="$(cd "$HERE/.." && pwd)"
@@ -79,12 +91,21 @@ cp "$TESTS/voice-recovery.py" "$WORK/voice-recovery.py"
 cp "$TESTS/data-priority-hook.py" "$WORK/data-priority-hook.py"
 cp "$TESTS/modem-mobility.py" "$WORK/modem-mobility.py"
 cp "$TESTS/sms-isolation.py" "$WORK/sms-isolation.py"
+cp "$TESTS/sim-events.py" "$WORK/sim-events.py"
+cp "$TESTS/voice-hangup.py" "$WORK/voice-hangup.py"
+cp "$TESTS/modem-data-ports.py" "$WORK/modem-data-ports.py"
+cp "$TESTS/modem-data-port-rules.py" "$WORK/modem-data-port-rules.py"
+cp "$TESTS/sim-radio-parser.py" "$WORK/sim-radio-parser.py"
 COMMON="$TOP/device/openwrt_device_common"
 cp "$COMMON/files/modemmanager-unisoc-renew" "$WORK/modemmanager-unisoc-renew"
 mkdir -p "$WORK/device/openwrt_device_common/shared" "$WORK/device/openwrt_device_common/overlay/usr/libexec"
 cp "$COMMON/shared/network-startup.py" "$WORK/device/openwrt_device_common/shared/network-startup.py"
 cp "$COMMON/shared/network-startup-defaults" "$WORK/device/openwrt_device_common/shared/network-startup-defaults"
 cp "$COMMON/overlay/usr/libexec/e5-mm-report-ports" "$WORK/device/openwrt_device_common/overlay/usr/libexec/e5-mm-report-ports"
+mkdir -p "$WORK/device/openwrt_device_common/overlay/etc/hotplug.d/wwan" "$WORK/device/openwrt_device_common/overlay/etc/init.d"
+cp "$COMMON/overlay/etc/hotplug.d/wwan/26-e5-sipa-eth" "$WORK/device/openwrt_device_common/overlay/etc/hotplug.d/wwan/26-e5-sipa-eth"
+cp "$COMMON/overlay/usr/libexec/e5-network-recovery" "$WORK/device/openwrt_device_common/overlay/usr/libexec/e5-network-recovery"
+cp "$COMMON/overlay/etc/init.d/e5-network-recovery" "$WORK/device/openwrt_device_common/overlay/etc/init.d/e5-network-recovery"
 n=900
 for p in "$TOP"/device/debian_device_common/patches/modemmanager-[0-9][0-9]-*.patch; do
     cp "$p" "$WORK/patches/src/$n-e5-$(basename "$p" | sed 's/^modemmanager-//')"
@@ -128,7 +149,7 @@ for try in 1 2 3 4 5; do
     for f in $missing; do rm -rf feeds/$f feeds/$f.*; ./scripts/feeds update $f >/dev/null || true; done
 done
 [ -z "$missing" ] || { echo "feeds not cloned: $missing"; exit 1; }
-./scripts/feeds install modemmanager >/dev/null
+./scripts/feeds install modemmanager python3 dbus-utils >/dev/null
 P=feeds/packages/net/modemmanager
 # the package directory back to the feed state, then the E5 changes on top
 git -C feeds/packages checkout -q -- net/modemmanager
@@ -184,6 +205,11 @@ python3 /work/voice-recovery.py "$(dirname "$voice_source")"
 python3 /work/data-priority-hook.py "$(dirname "$voice_source")"
 python3 /work/modem-mobility.py "$(dirname "$voice_source")" /work/modemmanager-unisoc-renew
 python3 /work/sms-isolation.py "$(dirname "$voice_source")"
+python3 /work/sim-events.py "$(dirname "$voice_source")"
+python3 /work/voice-hangup.py "$(dirname "$voice_source")"
+python3 /work/modem-data-ports.py "$(dirname "$voice_source")"
+python3 /work/modem-data-port-rules.py "$(dirname "$voice_source")"
+python3 /work/sim-radio-parser.py "$(dirname "$voice_source")/plugins/unisoc/mm-broadband-modem-unisoc.c"
 rm -f /out/modemmanager*.apk
 find bin/packages -name "modemmanager*-r$((rel + 900 + E5REV)).apk" -exec cp {} /out/ \;
 ls -la /out/modemmanager*.apk
