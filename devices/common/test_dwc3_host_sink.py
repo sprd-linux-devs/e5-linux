@@ -114,17 +114,22 @@ int main(void){
         if not kernel:
             self.skipTest('Set E5_TEST_KERNEL to a prepared 41S tree')
         source = (Path(kernel) / 'drivers/usb/dwc3/dwc3-sprd-role.h').read_text().replace('sprd_dualpower_', 'yh41s_')
+        lazy_boost = 'devm_regulator_get_optional' in function(source, 'sprd_dwc3_role_work')
         code = r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <errno.h>
+#define EPROBE_DEFER 517
 enum {EXTCON_USB=0, EXTCON_USB_HOST=1, USB_CHARGER_ABSENT, USB_CHARGER_PRESENT};
 enum {USB_ROLE_NONE, USB_ROLE_DEVICE, USB_ROLE_HOST};
 #define CHARGER_DETECT_DONE 1
 #define READ_ONCE(x) (x)
-#define IS_ERR_OR_NULL(x) (!(x))
-#define PTR_ERR(x) (-1)
+#define IS_ERR(x) ((uintptr_t)(x) >= (uintptr_t)-4095)
+#define IS_ERR_OR_NULL(x) (!(x) || IS_ERR(x))
+#define PTR_ERR(x) ((int)(intptr_t)(x))
+#define ERR_PTR(x) ((void *)(intptr_t)(x))
 #define msecs_to_jiffies(x) (x)
 #define dev_err(...) ((void)0)
 #define dev_info(...) ((void)0)
@@ -152,8 +157,13 @@ static struct usb_role_switch sw;
 static struct usb_phy phy;
 static struct dwc3 dwc;
 static struct platform_device child;
+static struct regulator boost_supply;
 static bool policy,phy_external;
 static int enables,disables,transitions,queued,enable_error,disable_error,phy_error,role_error,power_during_flush;
+static int supply_error,supply_gets;
+static __attribute__((unused)) struct regulator *devm_regulator_get_optional(struct device *d,const char *name){
+ (void)d;(void)name;supply_gets++;return supply_error?ERR_PTR(supply_error):&boost_supply;
+}
 static int extcon_get_state(struct extcon_dev *e,int cable){return cable==EXTCON_USB?e->usb:e->host;}
 static bool yh41s_typec_host_sink(struct device_node *n){(void)n;return policy;}
 static void yh41s_typec_data_role(struct device_node *n,bool h){(void)n;(void)h;}
@@ -177,6 +187,7 @@ static struct sprd_dwc3_role reset(void){
  phy=(struct usb_phy){.chg_state=USB_CHARGER_PRESENT,.flags=CHARGER_DETECT_DONE};
  dwc.xhci=&dwc;policy=phy_external=false;
  enables=disables=transitions=queued=enable_error=disable_error=phy_error=role_error=power_during_flush=0;
+ supply_error=supply_gets=0;
  return (struct sprd_dwc3_role){.extcon=&cc,.power_extcon=&power,.phy=&phy,.sw=&sw};
 }
 static void run(struct sprd_dwc3_role *r){sprd_dwc3_role_work(&r->work.work);}
@@ -202,8 +213,17 @@ int main(void){
  r=reset();cc.host=1;power_during_flush=1;run(&r);assert(!enables&&sw.role==USB_ROLE_DEVICE);
  r=reset();policy=true;cc.usb=power.usb=1;dwc.xhci=NULL;run(&r);assert(!enables&&sw.role==USB_ROLE_DEVICE);
  r=reset();policy=true;cc.usb=power.usb=1;r.stopped=true;run(&r);assert(!enables&&!transitions);
-}
-'''
+''' + (r'''
+ /* Changxing60 acquires real boost lazily; readiness must preserve device
+  * mode until the regulator arrives and must never turn external power on. */
+ r=reset();cc.host=1;supply_error=-EPROBE_DEFER;
+ run(&r);assert(!enables&&!r.vbus&&!r.enabled&&queued==1&&sw.role==USB_ROLE_DEVICE);
+ supply_error=0;run(&r);assert(enables==1&&r.enabled&&supply_gets==2&&sw.role==USB_ROLE_HOST);
+ r=reset();cc.host=1;supply_error=-ENODEV;
+ run(&r);assert(!enables&&!r.vbus&&!queued&&sw.role==USB_ROLE_DEVICE);
+ r=reset();power.usb=cc.usb=1;supply_error=-EPROBE_DEFER;
+ run(&r);assert(!enables&&!supply_gets&&sw.role==USB_ROLE_DEVICE);
+''' if lazy_boost else '') + '\n}\n'
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'role.c').write_text(code)

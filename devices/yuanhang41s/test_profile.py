@@ -8,6 +8,23 @@ BOARD = Path(__file__).parent
 
 
 class Profile(unittest.TestCase):
+    def test_early_battery_suppliers_and_symbol_dependencies(self):
+        resolver=runpy.run_path(str(BOARD.parent/'common/bringup-probe.py'))['module_order']
+        requested=(BOARD/'module-order.txt').read_text().split()
+        with tempfile.TemporaryDirectory() as directory:
+            modules=Path(directory)
+            for name in requested:
+                depends='sprd-charger-manager' if name=='ump96xx_fuel_gauge.ko' else ''
+                (modules/name).write_bytes(b'\0vermagic=test SMP\0depends='+depends.encode()+b'\0')
+            result=resolver(modules,requested,'test')
+            for provider,consumer in (('sprd_battery_info.ko','sprd-charger-manager.ko'),
+                    ('sprd-charger-manager.ko','ump96xx_fuel_gauge.ko'),
+                    ('ump96xx_fuel_gauge.ko','bq2560x-charger.ko')):
+                self.assertLess(result.index(provider),result.index(consumer))
+            (modules/'ump96xx_fuel_gauge.ko').unlink()
+            with self.assertRaisesRegex(ValueError,'ump96xx_fuel_gauge'):
+                resolver(modules,requested,'test')
+
     def test_release_configuration_keeps_platform_and_removes_old_trial_root(self):
         configure=runpy.run_path(str(BOARD/'build-kernel.py'))['config']
         base='CONFIG_SPRD_UMS9620_CLK=y\nCONFIG_PINCTRL_SPRD_QOGIRN6PRO=y\nCONFIG_CMDLINE="rdinit=/init e5.openwrt=old.ext4"\nCONFIG_LOCALVERSION="-m8"\nCONFIG_HOTPLUG_CPU=y\n'

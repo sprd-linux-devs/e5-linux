@@ -45,6 +45,8 @@ def main(*, profile='yuanhang41s', here=HERE):
     if kernel==build or out==kernel or out==build or Path('/') in (build,out):
         parser.error('Source, object and delivery directories must be separate')
     runpy.run_path(str(here/'prepare-kernel.py'))['apply'](kernel)
+    subprocess.run(['python3',str(TOP/'devices/common/test_power_probe.py'),
+                    '--kernel',str(kernel)],check=True)
     for test in ('test_boot_soc.py', 'test_battery_periodic.py', 'test_capacity_remap.py', 'test_charger_endpoint.py'):
         extra = ['--kernel'] if test == 'test_charger_endpoint.py' else []
         subprocess.run(['python3', str(TOP/'devices/common'/test), *extra, str(kernel)], check=True)
@@ -73,9 +75,9 @@ def main(*, profile='yuanhang41s', here=HERE):
         subprocess.run(['llvm-strip','--strip-debug',str(target)],check=True)
     for stale in modules.glob('*.ko'):
         if stale.name not in names:stale.unlink()
-    shutil.copy2(here/'module-order.txt',out/'module-order.txt')
-    for name in (out/'module-order.txt').read_text().splitlines():
-        if name not in names:raise ValueError('Missing early module: '+name)
+    resolve=runpy.run_path(str(TOP/'devices/common/bringup-probe.py'))['module_order']
+    early=resolve(modules,(here/'module-order.txt').read_text().split(),release)
+    (out/'module-order.txt').write_text('\n'.join(early)+'\n')
     def owned(info):
         info.uid=info.gid=0;info.uname=info.gname='root';return info
     with tarfile.open(out/'modules.tar','w') as archive:

@@ -225,6 +225,7 @@ def apply(kernel, *, charger_adapter=None, recipient='m8'):
     text = path.read_text().replace('\ttlsc6x_do_update_ifneed();',
                                    '\t/* Preserve the M8 factory touch firmware. */')
     path.write_text(text)
+    runpy.run_path(str(HERE.parent / 'common/power-probe.py'))['apply'](kernel)
 
 
 if __name__ == '__main__':

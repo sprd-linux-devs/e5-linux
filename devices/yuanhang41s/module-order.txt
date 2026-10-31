@@ -10,6 +10,10 @@ drm_kms_helper.ko
 drm_dma_helper.ko
 drm_client_lib.ko
 sprd-drm.ko
+sprd_battery_info.ko
+sprd-charger-manager.ko
+ump96xx_fuel_gauge.ko
+bq2560x-charger.ko
 spi-sprd.ko
 st7123.ko
 snd-soc-aw883xx.ko

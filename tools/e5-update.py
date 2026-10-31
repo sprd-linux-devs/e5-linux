@@ -200,8 +200,12 @@ def main():
     # USB-connected devices reuse the same management address. Keep trust
     # within this connection rather than pinning that IP to one installation.
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(a.host, username='root', password=GUI.password if GUI else os.environ['E5_TELNET_PASS'],
-                   look_for_keys=False, allow_agent=False, timeout=15, auth_timeout=20)
+    if GUI:
+        GUI.connect_ssh(client,a.host,GUI.password)
+    else:
+        client.connect(a.host, username='root', password=os.environ['E5_TELNET_PASS'],
+                       look_for_keys=False, allow_agent=False, timeout=30, banner_timeout=60, auth_timeout=60)
+        client.get_transport().set_keepalive(15)
     if GUI: GUI.validate_ssh(client)
     stage = None
     try:

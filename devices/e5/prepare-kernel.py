@@ -53,6 +53,7 @@ def apply(kernel):
             raise ValueError('Unexpected WCN firmware log default')
         text = text.replace(anchor, anchor + '\n\t/* ' + marker + '; explicitly enable through sysfs. */\n\tsysfs_info.armlog_status = 0;')
         path.write_text(text)
+    runpy.run_path(str(SHARED.parent / 'common/power-probe.py'))['apply'](kernel)
 
 
 if __name__ == '__main__':

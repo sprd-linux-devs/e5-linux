@@ -242,6 +242,7 @@ def main():
 ''' + pwm + '\t}\n' + text[end:]
         text = text.replace('\t{ .compatible = "sprd,sharkl3-backlight" },', '\t{ .compatible = "sprd,qogirn6l-backlight" },\n\t{ .compatible = "sprd,sharkl3-backlight" },', 1)
     path.write_text(text)
+    runpy.run_path(str(Path(__file__).resolve().parents[1] / 'common/power-probe.py'))['apply'](k)
 
 
 if __name__ == '__main__':
