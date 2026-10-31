@@ -736,7 +736,7 @@ OpenWrt Installer / 安装助手
   2. Install to internal storage / 缩容 userdata 安装
   3. Reinstall internal system / 覆盖重装已有内置系统
   4. Resume internal installation / 继续加密 data 的两阶段安装
-  5. Boot OpenWrt once / 从 Android 临时启动已安装的 OpenWrt（仅修改 misc）
+  5. Boot OpenWrt once / 临时启动已安装的 OpenWrt（启动异常可修复，无需重装）
   6. Update OpenWrt / 更新已运行的 OpenWrt
   7. Install to userdata image [EXPERIMENTAL] / userdata 镜像安装【实验性：可能损坏 Android F2FS，仅未加密 data】
   0. Exit / 退出
