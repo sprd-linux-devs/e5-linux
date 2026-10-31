@@ -113,7 +113,21 @@ def apply(kernel, replace_function):
 def apply_state(path, replace_function):
     """Keep accepted charge commands and the AW state coherent, as stock does."""
     text = path.read_text()
+    # Since the power-supply core checks the descriptor before get_property(),
+    # implementing CALIBRATE in the getter alone is insufficient. CM uses this
+    # vendor property to read CE, not to recalibrate the battery.
+    start = text.index('static enum power_supply_property aw32257_power_supply_props[] = {')
+    end = text.index('\n};', start)
+    properties = text[start:end]
+    if 'POWER_SUPPLY_PROP_CALIBRATE' not in properties:
+        anchor = '\tPOWER_SUPPLY_PROP_STATUS,'
+        if properties.count(anchor) != 1:
+            raise ValueError('Unexpected AW32257 property descriptor')
+        properties = properties.replace(anchor, anchor + '\n\tPOWER_SUPPLY_PROP_CALIBRATE,', 1)
+        text = text[:start] + properties + text[end:]
     if 'e5-aw32257-state-v2' in text:
+        if path.read_text() != text:
+            path.write_text(text)
         return
     text = replace_function(text, 'aw32257_charger_start_charge', '''
 \tint ret;

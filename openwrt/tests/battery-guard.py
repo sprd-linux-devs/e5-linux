@@ -24,6 +24,8 @@ def main():
                   '-v', str(HERE)+':/tests:ro', 'mu300-openwrt-base:25.12.5']
         subprocess.run([*runner, 'ucode', '/tests/battery-guard.uc'], check=True)
         subprocess.run([*runner, 'ucode', '/tests/battery-adapter.uc', FAMILY], check=True)
+        if FAMILY == 'e5':
+            subprocess.run([*runner, 'ucode', '/tests/battery-checkpoint.uc'], check=True)
         # Compile the actual service entrypoint, not only its policy imports.
         subprocess.run([*runner, 'ucode', '-c', '-o', '/tmp/watch.ucb', '/guard/watch.uc'], check=True)
         (root/'state.json').write_text('{"present":1,"capacity":40,"voltage":3800000}')

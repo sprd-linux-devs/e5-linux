@@ -10,23 +10,34 @@ import runpy
 HERE = Path(__file__).resolve().parent
 
 
-def dcp_input_policy(source):
-    """P720S20 opt-in input ceiling; keep battery CC and all other source limits."""
-    old = ('\tof_property_read_u32_index(battery_np, "charge-dcp-current-microamp", 1,\n'
-           '\t\t\t\t   &info->cur.dcp_limit);')
-    new = old + ('\n\t/* User-requested P720S20 DCP input ceiling; not battery charge current. */\n'
-                 '\tif (info->cur.dcp_limit > 0)\n\t\tinfo->cur.dcp_limit = 2500000;')
-    if new in source:
-        return source
-    if source.count(old) != 1:
-        raise ValueError('Unexpected P720S20 DCP battery-info parser')
-    return source.replace(old, new, 1)
+def dcp_charge_policy(source):
+    """P720S20 requested DCP input/CC policy, after native JEITA parsing."""
+    # Replace the former input-only override rather than stacking a second
+    # policy on it. The complete profile is checked in the shared loader's
+    # board-specific hook, after all temperature/voltage tables are available.
+    legacy = ('\n\t/* User-requested P720S20 DCP input ceiling; not battery charge current. */\n'
+              '\tif (info->cur.dcp_limit > 0)\n\t\tinfo->cur.dcp_limit = 2500000;')
+    source = source.replace(legacy, '')
+    include = '#include "changxing60-charge-profile.h"'
+    if include not in source:
+        anchor = 'int sprd_battery_get_battery_info('
+        if source.count(anchor) != 1:
+            raise ValueError('Unexpected P720S20 battery-info loader')
+        source = source.replace(anchor, include + '\n\n' + anchor, 1)
+    if 'changxing60_dcp_profile(info)' not in source:
+        anchor = '\tsprd_battery_parse_step_chg_table(info, battery_np, psy);'
+        if source.count(anchor) != 1:
+            raise ValueError('Unexpected P720S20 parsed battery profile')
+        source = source.replace(anchor, anchor +
+            '\n\tif (changxing60_dcp_profile(info))\n'
+            '\t\tdev_info(&psy->dev, "P720S20 DCP: 2.5 A input and normal-temperature battery charge; thermal limits retained\\n");', 1)
+    return source
 
 
 def apply(kernel):
     kernel = Path(kernel)
     battery = kernel/'drivers/power/supply/sprd_battery_info.c'
-    updated_battery = dcp_input_policy(battery.read_text())
+    updated_battery = dcp_charge_policy(battery.read_text())
     replace = runpy.run_path(str(HERE.parent/'t551m/prepare-kernel.py'))['replace_function']
     path = kernel/'drivers/power/supply/bq2560x-charger.c'
     source = path.read_text().replace('GPL-2.0:', 'GPL-2.0-only')
@@ -76,7 +87,10 @@ def apply(kernel):
     source = replace(source, 'bq2560x_charger_set_vindpmos', '\treturn -EOPNOTSUPP;')
     source = replace(source, 'bq2560x_charger_get_status', '''
 \tu8 value;
-\tint ret = bq2560x_read(info, BQ2560X_REG_8, &value);
+\tint ret;
+\tif (!info->charging)
+\t\treturn POWER_SUPPLY_STATUS_NOT_CHARGING;
+\tret = bq2560x_read(info, BQ2560X_REG_8, &value);
 \tif (ret < 0)
 \t\treturn ret;
 \t/* Stock SQC reads CHRG_STAT rather than its software enable flag. */
@@ -138,6 +152,7 @@ def apply(kernel):
     source = source.replace('for (i = 0; i < 0x10; i++)', 'for (i = 0; i <= 0x0b; i++)')
     path.write_text(source)
     battery.write_text(updated_battery)
+    (battery.parent/'changxing60-charge-profile.h').write_bytes((HERE/'charge-profile.h').read_bytes())
     for name, marker, addition in (
         ('drivers/power/supply/Kconfig', 'config CHARGER_BQ2560X_SPRD',
          'config CHARGER_BQ2560X_SPRD\n\ttristate "Unisoc BQ2560x charger"\n\tdepends on I2C && CHARGER_MANAGER && GPIOLIB\n'),

@@ -163,3 +163,14 @@ export OPENWRT_GUI_MACOS_ARTIFACT=/mnt/d/Git/e5-linux/installer/artifacts/macos-
 本机与两个桌面交付件一样复用 E5 的 Android 构建：WSL 设置 OPENWRT_GUI_ANDROID_ARTIFACT=/mnt/d/Git/e5-linux/installer/artifacts/android；Windows 使用 D:/Git/e5-linux/installer/artifacts/android。过期时只重编 Android，不修改 build.json。
 
 Mac 原生构建使用公共安装器仓库的 macos.yml，手动 dispatch 即可；不再在 E5 仓库新建 build/macos-* 快照分支。下载后仍核对公共 sources()。
+
+## E5 原厂模板登记（2026-10-31）
+
+原登记的 `work/e5-port/boot-before.img`、`misc-head.bin` 已不存在。
+当前直接使用 `tools/build-layout.json` 登记的荣悦 E5 原厂同组备份，不复制另一份缓存。
+`boot_b.bin` SHA-256 为 `1203d1cf5b0b2f0c02d3ba5d69b38a6677e47e939697cd8fb1a0f533d7baad39`。
+已与 `20261030-142933-root-apk-seven-models-22852` 中通过发布清单／ZIP 文件清单哈希核验的 E5 boot 对照：
+除构建器本就替换的内核／ramdisk 长度、命令行、signature_size 以外，完整头部逐字节一致，
+保留的原厂 vbmeta blob 也逐字节一致。不是拿其他机型或另一个旧内核替代输入。
+同组 `misc.bin` 的 BCAB、CRC、Android 槽位状态已校验；构建器只使用其中的启动控制结构，
+不把整份 misc 备份装进发布包。若登记输入再次缺失，停止检查并重新核实来源。

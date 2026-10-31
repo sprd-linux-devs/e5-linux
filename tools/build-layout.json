@@ -30,8 +30,8 @@
   "profiles": {
     "e5": {
       "kernel": "{workspace}/kernels/e5",
-      "stock_boot": "{repo}/work/e5-port/boot-before.img",
-      "misc_head": "{repo}/work/e5-port/misc-head.bin"
+      "stock_boot": "/mnt/d/随身WiFi/荣悦E5刷机/spd_dump_for_ums9621/备份/boot_b.bin",
+      "misc_head": "/mnt/d/随身WiFi/荣悦E5刷机/spd_dump_for_ums9621/备份/misc.bin"
     },
     "t551m": {
       "kernel": "{workspace}/kernels/t551m",

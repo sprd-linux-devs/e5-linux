@@ -231,10 +231,12 @@ def main():
         if args.profile in ('e5', 't551m', 't512n', 'lym10k'):
             subprocess.run(['python3', str(TOP/'devices/common/test_musb_host_sink.py')],
                            env=dict(os.environ, MUSB_TEST_KERNEL=str(source)), check=True)
-        for test in ('test_fuel_gauge.py','test_fgu_latch.py','test_charger_jeita.py','test_usb_ncm.py'):
+        for test in ('test_fuel_gauge.py','test_fgu_latch.py','test_charger_jeita.py',
+                     'test_boot_soc.py','test_battery_periodic.py','test_capacity_remap.py','test_usb_ncm.py'):
             subprocess.run(['python3',str(TOP/'devices/common'/test),str(source)],check=True)
         if args.profile=='e5':
             subprocess.run(['python3',str(TOP/'devices/e5/test_charger.py'),str(source)],check=True)
+            subprocess.run(['python3',str(TOP/'devices/e5/test_charger_readback.py'),str(source)],check=True)
         subprocess.run(['python3',str(TOP/'upstream/check-container-support.py'),str(out)],check=True)
         (out/'repository-commit').write_bytes(git(TOP,'rev-parse','HEAD'))
         (out/'kernel-source-commit').write_text(local['revision']+'\n')

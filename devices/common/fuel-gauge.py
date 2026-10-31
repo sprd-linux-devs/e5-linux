@@ -13,12 +13,34 @@ CAPACITY_ARITHMETIC = Path(__file__).with_name('charger-capacity-arithmetic.patc
 JEITA_STATE = Path(__file__).with_name('charger-jeita-state.patch')
 SET_LATCH = Path(__file__).with_name('fuel-gauge-set-latch.patch')
 SAVE_READY = Path(__file__).with_name('fuel-gauge-save-ready.patch')
+BOOT_OCV = Path(__file__).with_name('fuel-gauge-boot-ocv.patch')
+CAPACITY_REMAP = Path(__file__).with_name('charger-capacity-remap.patch')
+
+# Migrate the former 41S-only insertion in existing prepared caches. This exact
+# block is removed only in staging; unknown variants still fail patch checks.
+LEGACY_BOOT_OCV = '''\t/* P720S11 stock boot-OCV consistency, sc27xx_fgu +0x1ec. */
+\t{
+\t\tint live_ocv_mv;
+\t\ts64 delta_uv;
+\t\tret = sprd_fgu_get_vbat_ocv(data, &live_ocv_mv);
+\t\tif (ret)
+\t\t\treturn;
+\t\tdelta_uv = (s64)pocv_uv - (s64)live_ocv_mv * 1000;
+\t\tif (delta_uv > 300000 || delta_uv < -300000) {
+\t\t\tdev_warn(data->dev, "Boot calib: stale POCV %d, live OCV %d mV\\n",
+\t\t\t\t pocv_uv, live_ocv_mv);
+\t\t\treturn;
+\t\t}
+\t}
+
+'''
 
 
 def apply(kernel):
     kernel = Path(kernel).resolve()
     patches = (PATCH, STOCK_POLICY, SAVE_DIAGNOSTICS, STOCK_LATCHES,
-               CHARGER_LIFETIME, CAPACITY_ARITHMETIC, JEITA_STATE, SET_LATCH, SAVE_READY)
+               CHARGER_LIFETIME, CAPACITY_ARITHMETIC, JEITA_STATE, SET_LATCH, SAVE_READY,
+               BOOT_OCV, CAPACITY_REMAP)
     paths = set(line[6:] for patch in patches for line in patch.read_text().splitlines()
                 if line.startswith('+++ b/'))
     with tempfile.TemporaryDirectory(prefix='e5-fgu-') as directory:
@@ -27,6 +49,12 @@ def apply(kernel):
             target = stage/name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((kernel/name).read_bytes())
+        core = stage/'drivers/power/supply/sprd_fuel_gauge_core.c'
+        source = core.read_text()
+        if 'P720S11 stock boot-OCV consistency' in source:
+            if source.count(LEGACY_BOOT_OCV) != 1:
+                raise ValueError('Unrecognized legacy boot-OCV check; source left unchanged')
+            core.write_text(source.replace(LEGACY_BOOT_OCV, '', 1))
         args = ['git', 'apply', '--whitespace=nowarn']
         # Unstack already applied patches in reverse order, then validate and
         # apply the complete stack in staging before changing the build tree.

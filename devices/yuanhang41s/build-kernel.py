@@ -45,6 +45,9 @@ def main(*, profile='yuanhang41s', here=HERE):
     if kernel==build or out==kernel or out==build or Path('/') in (build,out):
         parser.error('Source, object and delivery directories must be separate')
     runpy.run_path(str(here/'prepare-kernel.py'))['apply'](kernel)
+    for test in ('test_boot_soc.py', 'test_battery_periodic.py', 'test_capacity_remap.py', 'test_charger_endpoint.py'):
+        extra = ['--kernel'] if test == 'test_charger_endpoint.py' else []
+        subprocess.run(['python3', str(TOP/'devices/common'/test), *extra, str(kernel)], check=True)
     build.mkdir(parents=True,exist_ok=True);out.mkdir(parents=True,exist_ok=True)
     # Do not create another checkout, copy a rootfs or run modules_install into
     # a persistent duplicate root. Only the delivery module cohort is staged.

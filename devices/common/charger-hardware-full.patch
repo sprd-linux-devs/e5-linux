@@ -4,7 +4,7 @@
   */
  static bool is_full_charged(struct charger_manager *cm)
  {
-+	/* P720S11 hardware termination endpoint (SGM41513, stock SQC STATUS).
++	/* Stock SQC hardware termination endpoint (opt-in board policy).
 +	 * This board's CM consumes the charger's real termination status. Do not
 +	 * infer full from UI capacity or retain the donor's 120 mA criterion:
 +	 * SGM can terminate above it. Keep the stock CM voltage gate and FGU
@@ -137,7 +137,7 @@
 -	return is_full;
 +			goto not_full;
 +		desc->force_set_full = true;
-+		dev_info(cm->dev, "P720S11 hardware full endpoint: vbat=%d uV\n", uV);
++		dev_info(cm->dev, "SQC hardware full endpoint: vbat=%d uV\n", uV);
 +	}
 +	return true;
 +

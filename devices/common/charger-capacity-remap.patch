@@ -1,0 +1,101 @@
+--- a/drivers/power/supply/charger-manager.c
++++ b/drivers/power/supply/charger-manager.c
+@@ -246,6 +246,78 @@
+ static bool cm_pd_is_ac_online(struct charger_manager *cm);
+ static void cm_smt_sm(struct charger_manager *cm);
+ 
++/* The stock DT keeps the SOC curve on charger-manager, not on FGU. */
++static int cm_init_capacity_remap(struct device *dev, struct charger_desc *desc)
++{
++	const __be32 *values;
++	int size, i, previous = 0;
++	s64 edge = 0;
++
++	values = of_get_property(dev->of_node, "cm-cap-remap-table", &size);
++	if (!values)
++		return 0;
++	if (size <= 0 || size % (3 * sizeof(*values)))
++		return -EINVAL;
++
++	desc->cap_remap_table_len = size / (3 * sizeof(*values));
++	desc->cap_remap_table = devm_kcalloc(dev, desc->cap_remap_table_len,
++					   sizeof(*desc->cap_remap_table), GFP_KERNEL);
++	if (!desc->cap_remap_table)
++		return -ENOMEM;
++
++	for (i = 0; i < desc->cap_remap_table_len; i++) {
++		struct cap_remap_table *row = &desc->cap_remap_table[i];
++
++		row->lcap = be32_to_cpu(*values++);
++		row->hcap = be32_to_cpu(*values++);
++		row->cnt = be32_to_cpu(*values++);
++		if (row->lcap < previous || row->hcap <= row->lcap ||
++		    row->hcap > 100 || row->cnt <= 0)
++			return -EINVAL;
++		edge += (row->lcap - previous) * 1000;
++		if (edge > INT_MAX)
++			return -ERANGE;
++		row->lb = edge;
++		edge += (s64)(row->hcap - row->lcap) * row->cnt * 1000;
++		if (edge > INT_MAX - (100 - row->hcap) * 1000)
++			return -ERANGE;
++		row->hb = edge;
++		previous = row->hcap;
++	}
++	desc->cap_remap_total_cnt = edge / 1000 + 100 - previous;
++	return 0;
++}
++
++static int cm_capacity_remap(struct charger_manager *cm, int fuel_cap)
++{
++	struct charger_desc *desc = cm->desc;
++	struct cap_remap_table *row, *previous = NULL;
++	s64 weighted;
++	int i;
++
++	if (!desc->cap_remap_table)
++		return fuel_cap;
++	if (fuel_cap < 0)
++		return 0;
++	if (fuel_cap > CM_CAP_FULL_PERCENT)
++		return CM_CAP_FULL_PERCENT;
++
++	weighted = (s64)fuel_cap * desc->cap_remap_total_cnt;
++	for (i = 0; i < desc->cap_remap_table_len; i++) {
++		row = &desc->cap_remap_table[i];
++		if (weighted <= row->lb)
++			return previous ?
++				DIV_ROUND_CLOSEST(weighted - previous->hb, 100) + previous->hcap * 10 :
++				DIV_ROUND_CLOSEST(weighted, 100);
++		if (weighted <= row->hb)
++			return DIV_ROUND_CLOSEST(weighted - row->lb, (s64)row->cnt * 100) +
++				row->lcap * 10;
++		previous = row;
++	}
++	/* Both the gap and the boundary are in tenths of a percent. */
++	return DIV_ROUND_CLOSEST(weighted - previous->hb, 100) + previous->hcap * 10;
++}
++
+ /*
+  * cm_cap_advance_full - capacity value are
+  * reported in advance based on percentage
+@@ -260,7 +332,7 @@
+ 			fuel_cap  = CM_CAP_FULL_PERCENT;
+ 	}
+ 
+-	return fuel_cap;
++	return cm_capacity_remap(cm, fuel_cap);
+ }
+ 
+ /**
+@@ -7604,6 +7676,10 @@
+ 			     &desc->cp.cp_taper_current);
+ 	of_property_read_u32(np, "cm-cap-full-advance-percent",
+ 			     &desc->cap_remap_full_percent);
++
++	i = cm_init_capacity_remap(dev, desc);
++	if (i)
++		return ERR_PTR(i);
+ 
+ 	if (desc->psy_cp_stat && !desc->cp.cp_taper_current)
+ 		desc->cp.cp_taper_current = CM_CP_DEFAULT_TAPER_CURRENT;

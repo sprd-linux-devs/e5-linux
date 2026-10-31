@@ -1,0 +1,25 @@
+--- a/drivers/power/supply/sprd_fuel_gauge_core.c
++++ b/drivers/power/supply/sprd_fuel_gauge_core.c
+@@ -1142,6 +1142,22 @@
+ 		return;
+ 	}
+ 
++	/* Stock UMP96xx boot-OCV consistency (P720S11/P720S20). */
++	{
++		int live_ocv_mv;
++		s64 delta_uv;
++
++		ret = sprd_fgu_get_vbat_ocv(data, &live_ocv_mv);
++		if (ret)
++			return;
++		delta_uv = (s64)pocv_uv - (s64)live_ocv_mv * 1000;
++		if (delta_uv > 300000 || delta_uv < -300000) {
++			dev_warn(data->dev, "Boot calib: stale POCV %d, live OCV %d mV\n",
++				 pocv_uv, live_ocv_mv);
++			return;
++		}
++	}
++
+ 	data->track.pocv_info.valid = true;
+ 	data->track.pocv_info.ocv_uv = pocv_uv;
+ 	data->track.pocv_info.ocv_time_stamp = cur_time;

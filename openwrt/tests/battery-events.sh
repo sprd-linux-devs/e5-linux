@@ -58,3 +58,17 @@ kill "$guard_pid"
 wait "$guard_pid"
 guard_pid=
 printf 'PASS: real 800ms UVLO timers complete despite event bursts; no forced or real poweroff\n'
+
+ucode /tests/battery-checkpoint-events.uc &
+guard_pid=$!
+n=0
+until [ "$(cat /fixtures/checkpoint-ticks 2>/dev/null || echo 0)" -ge 3 ]; do
+    n=$((n + 1)); [ "$n" -lt 10 ]; sleep 1
+done
+[ "$(cat /fixtures/checkpoint-reads)" = 1 ]
+kill "$guard_pid"
+wait "$guard_pid"
+guard_pid=
+[ -s /fixtures/checkpoint-stopped ]
+[ "$(cat /fixtures/checkpoint-stopped)" -ge 4 ]
+printf 'PASS: checkpoint timer shares the event loop, does not poll battery state, and saves on SIGTERM\n'

@@ -1,11 +1,12 @@
-"""Run the prepared C status/endpoint functions with fake I2C and supplies.
+"""Run opt-in SQC boards' real C status/endpoint functions with fake supplies.
 
-Usage in Linux: python3 test_full_charge.py --kernel /path/to/prepared/kernel
+Usage in Linux: python3 test_charger_endpoint.py --kernel /path/to/prepared/kernel
 These are offline regressions, not a physical full-charge-cycle validation.
 """
 from pathlib import Path
 import argparse
 import re
+import runpy
 import subprocess
 import tempfile
 
@@ -125,6 +126,23 @@ def main():
     assert 'cm->desc->trickle_time >= cm->desc->trickle_time_out' not in manager
     with tempfile.TemporaryDirectory() as temp:
         target = Path(temp)
+        # Real existing prepared policy can be migrated/replayed without
+        # accumulating a second implementation or changing unknown source.
+        policy = runpy.run_path(str(Path(__file__).with_name('charger-hardware-full.py')))
+        prepared = target/'drivers/power/supply/charger-manager.c'
+        prepared.parent.mkdir(parents=True)
+        prepared.write_text(manager)
+        policy['restore'](target)
+        policy['apply'](target)
+        assert prepared.read_text() == manager
+        policy['apply'](target)
+        assert prepared.read_text() == manager
+        legacy = manager.replace(policy['COMMENT'], policy['LEGACY_COMMENT']).replace(
+            'SQC hardware full endpoint: vbat=', 'P720S11 hardware full endpoint: vbat=')
+        prepared.write_text(legacy)
+        policy['restore'](target)
+        policy['apply'](target)
+        assert prepared.read_text() == manager
         source = PRELUDE + function(charger, 'bq2560x_charger_get_status') + '\n'
         source += function(manager, 'is_full_charged') + MAIN
         (target / 'endpoint.c').write_text(source)

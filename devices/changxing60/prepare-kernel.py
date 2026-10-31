@@ -13,6 +13,8 @@ HERE=Path(__file__).resolve().parent
 
 def apply(kernel):
     kernel=Path(kernel)
+    full=runpy.run_path(str(HERE.parent/'common/charger-hardware-full.py'))
+    full['restore'](kernel)
     runpy.run_path(str(HERE.parent/'m8/prepare-kernel.py'))['apply'](
         kernel,recipient='changxing60',
         charger_adapter=runpy.run_path(str(HERE/'charger.py'))['apply'])
@@ -29,6 +31,7 @@ def apply(kernel):
     # without importing the 41S TCPM or its charger register table.
     for path in ('common/dwc3-host-policy.py', 'common/dwc3-host-sink.py'):
         runpy.run_path(str(HERE.parent/path))['apply'](kernel)
+    full['apply'](kernel)
 
 
 if __name__=='__main__':
