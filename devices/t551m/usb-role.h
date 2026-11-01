@@ -8,6 +8,28 @@ static int sc27xx_typec_hw_mode(struct sc27xx_typec *sc, u32 mode)
 				  SC27XX_MODE_MASK, mode);
 }
 
+/* An attached CC state can outlive a MODE write. As in the vendor Rp/Rd
+ * restart and explicit policy switching, open CC before changing policy,
+ * then return ownership to hardware. Only a deliberate automatic probe
+ * transition uses this; ordinary detach/steady charging never pulses CC.
+ */
+static int sc27xx_typec_reprobe_mode(struct sc27xx_typec *sc, u32 mode)
+{
+	u32 mask = SC27XX_CC1_SW_SWITCH_MASK | SC27XX_CC2_SW_SWITCH_MASK;
+	u32 open = SC27XX_CC1_SW_SWITCH(SC27XX_TYPEC_NC) |
+		   SC27XX_CC2_SW_SWITCH(SC27XX_TYPEC_NC);
+	int ret, restore;
+
+	ret = regmap_update_bits(sc->regmap, sc->base + SC27XX_SW_CFG, mask, open);
+	if (ret)
+		return ret;
+	ret = sc27xx_typec_hw_mode(sc, mode);
+	if (!ret)
+		msleep(20);
+	restore = regmap_update_bits(sc->regmap, sc->base + SC27XX_SW_CFG, mask, 0);
+	return ret ? ret : restore;
+}
+
 static void sc27xx_typec_role_finish(struct sc27xx_typec *sc)
 {
 	cancel_delayed_work(&sc->role_work);
@@ -38,7 +60,7 @@ static bool sc27xx_typec_prefer_sink(struct sc27xx_typec *sc)
 	if (sc->role_phase == ROLE_TRY_SINK)
 		return true;
 	sc->role_phase = ROLE_TRY_SINK;
-	ret = sc27xx_typec_hw_mode(sc, SC27XX_MODE_SNK);
+	ret = sc27xx_typec_reprobe_mode(sc, SC27XX_MODE_SNK);
 	if (ret) {
 		sc->role_phase = ROLE_IDLE;
 		dev_warn(sc->dev, "cannot start sink probe: %d\n", ret);
@@ -62,7 +84,7 @@ static void sc27xx_typec_role_work(struct work_struct *work)
 	ret = regmap_read(sc->regmap, sc->base + SC27XX_STATUS, &state);
 	if (ret) {
 		sc->role_phase = ROLE_IDLE;
-		sc27xx_typec_hw_mode(sc, SC27XX_MODE_DRP);
+		sc27xx_typec_reprobe_mode(sc, SC27XX_MODE_DRP);
 		goto out;
 	}
 	state &= sc->var_data->state_mask;
@@ -73,7 +95,7 @@ static void sc27xx_typec_role_work(struct work_struct *work)
 		sc27xx_typec_connect_state = sc->partner_connected;
 	} else if (sc->role_phase == ROLE_TRY_SINK) {
 		sc->role_phase = ROLE_ALLOW_SOURCE;
-		ret = sc27xx_typec_hw_mode(sc, SC27XX_MODE_DRP);
+		ret = sc27xx_typec_reprobe_mode(sc, SC27XX_MODE_DRP);
 		if (ret)
 			sc->role_phase = ROLE_IDLE;
 		else

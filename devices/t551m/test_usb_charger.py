@@ -50,6 +50,9 @@ typedef int irqreturn_t;
 #define CHG_STATE_DETECTED 2
 #define SPRD_CHG_DETECT_DELAY 500
 #define READ_ONCE(x) (x)
+#define WRITE_ONCE(x,v) ((x)=(v))
+#define EXTCON_USB 1
+static void extcon_sync(void *edev,int cable) {(void)edev;(void)cable;}
 #define container_of(p,t,m) ((t *)((char *)(p)-offsetof(t,m)))
 #define spin_lock_irqsave(p,f) ((void)(p),(f)=0)
 #define spin_unlock_irqrestore(p,f) ((void)(p),(void)(f))
@@ -87,18 +90,30 @@ static int pd_enabled,hw_mode,queued_delay;
 #define SC27XX_CC2_SW_SWITCH(x) ((x)<<14)
 #define SC27XX_TYPEC_NC 1
 static int cc_override,update_error,irq_disabled;
-static void msleep(int ms) {assert(ms==30);}
+/* PMIC attached state is retained across a MODE write until CC is opened.
+ * The peer is either an external source or a real sink accessory. */
+static int latched_peer,cc_restarts;
+static int state;
+static void cc_released(void);
+static void msleep(int ms) {assert(ms==20 || ms==30);}
 static void disable_irq(int irq) {irq_disabled++;}
 static int mod_delayed_work(void *q,struct delayed_work *w,int delay) {queued_delay=delay;return 0;}
 static int cancel_delayed_work(struct delayed_work *w) {queued_delay=0;return 0;}
 static int cancel_delayed_work_sync(struct delayed_work *w) {queued_delay=0;return 0;}
 static int regmap_update_bits(void *map,u32 reg,u32 mask,u32 value) {
     if (update_error) {update_error=0;return -EIO;}
-    if (reg==SC27XX_SW_CFG) cc_override=value;else hw_mode=value;return 0;
+    if (reg==SC27XX_SW_CFG) {
+        if (cc_override && !value) {
+            cc_restarts++;
+            cc_released();
+        }
+        cc_override=value;
+    } else hw_mode=value;
+    return 0;
 }
 struct variant { u32 event_mask, state_mask, int_clr, mode; };
-struct sc27xx_typec { void *dev, *regmap; u32 base, state; struct variant *var_data; bool partner_connected,role_irq_requested; int irq,mode,role_lock,role_phase;struct delayed_work role_work; };
-static int sc27xx_typec_connect_state, acknowledged, events, state, read_error;
+struct sc27xx_typec { void *dev, *regmap, *edev; u32 base, state; struct variant *var_data; bool partner_connected,role_irq_requested,external_host_policy; int irq,mode,role_lock,role_phase;struct delayed_work role_work; };
+static int sc27xx_typec_connect_state, acknowledged, events, read_error;
 static char calls[100];
 static void call(char value) { size_t n=strlen(calls); calls[n]=value; calls[n+1]=0; }
 static int regmap_read(void *map, u32 reg, u32 *value) {
@@ -134,6 +149,14 @@ static void usb_phy_set_default_current(struct usb_phy *phy) { reset_current++; 
 static void sprd_bc1p2_notify_charger(struct usb_phy *phy) { notified++; }
 '''
 enums = re.search(r'enum sc27xx_typec_connection_state \{.*?\};', typec, re.S)[0]
+enums += r'''
+static void cc_released(void) {
+    if (latched_peer==1)
+        state=hw_mode==SC27XX_MODE_SRC?SC27XX_ATTACHWAIT_SRC:SC27XX_ATTACHED_SNK;
+    if (latched_peer==2)
+        state=hw_mode==SC27XX_MODE_SNK?SC27XX_ATTACHWAIT_SNK:SC27XX_ATTACHED_SRC;
+}
+'''
 detect = r'''
 static void sprd_get_bc1p2_type(struct sprd_bc1p2_priv *info) {
     info->phy->chg_type=DCP_TYPE;
@@ -175,6 +198,27 @@ int main(void) {
     read_error=1;assert(sc27xx_typec_interrupt(0,&sc)==IRQ_NONE);read_error=0;
     puts("PASS: coalesced attach/detach, final detached state, rapid replug and read errors");
 
+    /* Reproduce C-C source misclassified as OTG: MODE alone is not a fresh
+     * negotiation. The driver must obtain a real sink before publishing it. */
+    sc.mode=TYPEC_PORT_DRP;sc.partner_connected=false;sc.role_phase=ROLE_IDLE;
+    latched_peer=1;cc_restarts=0;hw_mode=SC27XX_MODE_DRP;
+    state=SC27XX_ATTACHED_SRC;events=1;memset(calls,0,sizeof(calls));
+    sc27xx_typec_interrupt(0,&sc);
+    assert(cc_restarts==1 && !cc_override && state==SC27XX_ATTACHED_SNK);
+    queued_delay=0;sc27xx_typec_role_work(&sc.role_work.work);
+    assert(sc.partner_connected && sc.state==SC27XX_ATTACHED_SNK && !queued_delay);
+    state=SC27XX_DETACHED_SNK;events=2;sc27xx_typec_interrupt(0,&sc);
+    latched_peer=2;cc_restarts=0;state=SC27XX_ATTACHED_SRC;events=1;
+    sc27xx_typec_interrupt(0,&sc);
+    assert(!sc.partner_connected && state==SC27XX_ATTACHWAIT_SNK);
+    sc27xx_typec_role_work(&sc.role_work.work);
+    assert(cc_restarts==2 && state==SC27XX_ATTACHED_SRC && !sc.partner_connected);
+    sc27xx_typec_interrupt(0,&sc);
+    assert(sc.partner_connected && sc.state==SC27XX_ATTACHED_SRC && !queued_delay);
+    state=SC27XX_DETACHED_SNK;events=2;sc27xx_typec_interrupt(0,&sc);
+    latched_peer=0;
+    puts("PASS: latched C-C source re-evaluated as sink; real OTG still allowed after sink probe");
+
     sc.mode=TYPEC_PORT_DRP;memset(calls,0,sizeof(calls));
     state=SC27XX_ATTACHED_SRC;events=1;
     sc27xx_typec_interrupt(0,&sc);
@@ -202,21 +246,21 @@ int main(void) {
     sc27xx_typec_role_cleanup(&sc);assert(!queued_delay);pd_enabled=0;
     puts("PASS: charger wins sink probe, real OTG starts after probe, cancellation, expiry and PD bypass");
 
-    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_DFP));
+    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_DFP,false));
     assert(sc.mode==TYPEC_PORT_DFP && hw_mode==SC27XX_MODE_SRC && !cc_override);
     assert(!sc.partner_connected && !queued_delay);
     state=SC27XX_ATTACHED_SNK;events=1;sc27xx_typec_interrupt(0,&sc);
     assert(!sc.partner_connected); /* Never publish a stale sink in manual host mode. */
     state=SC27XX_ATTACHED_SRC;sc27xx_typec_interrupt(0,&sc);assert(sc.partner_connected);
-    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_UFP));
+    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_UFP,false));
     assert(!sc.partner_connected && hw_mode==SC27XX_MODE_SNK && !cc_override);
     state=SC27XX_ATTACHED_SRC;sc27xx_typec_interrupt(0,&sc);assert(!sc.partner_connected);
     state=SC27XX_ATTACHED_SNK;sc27xx_typec_interrupt(0,&sc);assert(sc.partner_connected);
-    update_error=1;assert(sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP)==-EIO);
+    update_error=1;assert(sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP,false)==-EIO);
     assert(sc.mode==TYPEC_PORT_UFP && !cc_override);
-    assert(sc27xx_typec_set_policy(&sc,55)==-EINVAL);
-    pd_enabled=1;assert(sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP)==-EOPNOTSUPP);pd_enabled=0;
-    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP));
+    assert(sc27xx_typec_set_policy(&sc,55,false)==-EINVAL);
+    pd_enabled=1;assert(sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP,false)==-EOPNOTSUPP);pd_enabled=0;
+    assert(!sc27xx_typec_set_policy(&sc,TYPEC_PORT_DRP,false));
     sc.role_irq_requested=true;sc27xx_typec_role_cleanup(&sc);sc27xx_typec_role_cleanup(&sc);
     assert(irq_disabled==1 && !sc.role_irq_requested);
     puts("PASS: manual host/device/auto policy, stale IRQ rejection, errors and cleanup");
