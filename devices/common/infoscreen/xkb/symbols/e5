@@ -1,0 +1,9 @@
+// XKB key numbers are Linux evdev codes + 8, not matrix scan indices.
+// In particular, Y60 KEY_PHONE is at a different matrix position from E5.
+partial alphanumeric_keys
+xkb_symbols "keypad" {
+    replace key <I147> { [ Menu ] };       // KEY_MENU 139
+    replace key <I177> { [ F13 ] };        // KEY_PHONE 169; WPE cannot name XF86Phone
+    replace key <I361> { [ Return ] };     // KEY_SELECT 353
+    replace key <I531> { type[Group1] = "ONE_LEVEL", [ numbersign ] }; // KEY_NUMERIC_POUND 523
+};

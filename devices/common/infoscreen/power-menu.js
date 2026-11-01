@@ -93,6 +93,12 @@ ${selected ? `<p class="power-note">${selected === 'android_once' ? words('ÈáçÂê
     function key(event) {
         if (!root) return;
         const kind = keyKind(event);
+        if (window.T551MCalls?.forwardKey(event)) { cancelHold(); return; }
+        // The phone SDK captures the red key while a live call exists.
+        // Keep idle/dark-screen power behavior and all other plugins unchanged.
+        if (!isOpen() && !blank && kind === 'power' && appOpen?.id === 'phone' && appCapturePower) {
+            cancelHold();return;
+        }
         if (kind === 'power') {
             event.preventDefault(); event.stopImmediatePropagation();
             if (event.type === 'keydown') {

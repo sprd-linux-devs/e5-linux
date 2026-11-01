@@ -19,13 +19,13 @@ class CpuIdleStage(unittest.TestCase):
             binary=base/'native-fixture';binary.write_bytes(b'offline native fixture')
             def dependency(path,*args,**kwargs):
                 path=Path(path)
-                if path.name in ('build-at-client.py','build-at-owner.py'):
+                if path.name in ('build-at-client.py','build-at-owner.py','build-sml-voltage.py'):
                     return {'build':lambda:binary}
                 if path.name=='stage.py' and path.parent.name=='infoscreen':
                     return {'stage':lambda root:None}
                 return real_run(str(path),*args,**kwargs)
             with patch.dict(stage.__globals__,PACKAGES={}), patch.object(runpy,'run_path',side_effect=dependency), patch.dict(os.environ,E5_UI_CACHE=str(base/'cache')):
-                for profile in ('e5','t551m','m8','t512n','yuanhang41s','k1'):
+                for profile in ('e5','t551m','m8','t512n','yuanhang41s','k1','lym10k','changxing60','y60'):
                     with self.subTest(profile=profile):
                         root=base/profile
                         config=root/'etc/unisoc-cpu-idle.json'
@@ -35,6 +35,9 @@ class CpuIdleStage(unittest.TestCase):
                         network.write_text('{"version":1,"algorithm":"bbr"}\n')
                         stage(root,profile)
                         stage(root,profile)
+                        checker=root/'usr/libexec/unisoc-modem/sml-voltage-check'
+                        self.assertEqual(checker.read_bytes(),binary.read_bytes())
+                        self.assertEqual(checker.stat().st_mode&0o777,0o755)
                         self.assertEqual(json.loads(config.read_text()),{'version':1,'enabled':False})
                         self.assertTrue((root/'etc/rc.d/S99unisoc-cpu-idle').is_symlink())
                         self.assertEqual(json.loads(network.read_text()),{'version':1,'algorithm':'bbr'})

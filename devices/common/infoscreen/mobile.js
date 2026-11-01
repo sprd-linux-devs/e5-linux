@@ -627,6 +627,9 @@ window.T551M = (() => {
         dialTargets.add(doc);
         target.addEventListener('keydown', async event => {
             if (!mounted || keyKind(event) !== 'call' || T551MPower.isOpen() || window.T551MCalls?.active()) return;
+            // Inside Phone, its SDK owns the green key (dial/answer). Moving
+            // focus to the already focused frame swallowed the original event.
+            if (appOpen?.id === 'phone' && target !== window) return;
             event.preventDefault(); event.stopImmediatePropagation();
             if (event.repeat || openingPhone) return;
             if (blank) return;

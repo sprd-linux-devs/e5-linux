@@ -88,6 +88,9 @@ def main():
         src = TOP / ('openwrt/src/' + n + '.c')
         run(a.cc, '-static', '-Os', '-s', '-Wall', '-o', root / target, src)
         helpers[target] = {'source_sha256': digest(src), 'binary_sha256': digest(root / target)}
+    target = 'usr/libexec/unisoc-modem/sml-voltage-check'
+    helpers[target] = {'source_sha256': digest(TOP/'devices/common/sml-voltage-check.c'),
+                       'binary_sha256': digest(root/target)}
     # Keep the pristine upstream first-boot hooks present in the clean base.
     # The common stager refreshes their repository-owned replacements.
     for kind in ('storage', 'network'):

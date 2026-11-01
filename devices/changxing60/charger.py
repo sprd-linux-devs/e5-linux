@@ -1,4 +1,4 @@
-"""P720S20 REG0B=0x14 charger port, without another board's A6 encoding.
+"""P720S20 stock SQC charger variants, without another board's A6 encoding.
 
 Evidence: captured 20240919 P720S20 sqc_bq2560x.ko, sqc_mp_set_cv at
 0x3df8 and sqc_mp_get_cv at 0x3ef4; stock battery DT supplies the limits.
@@ -52,19 +52,44 @@ def apply(kernel):
     source = source.replace('charger_cfg.of_node = dev->of_node;',
                             'charger_cfg.fwnode = dev_fwnode(dev);').replace('GPIOF_DIR_IN', 'GPIOF_IN')
     source = source.replace('.name\t\t\t= "charger",', '.name\t\t\t= "bq2560x_charger",')
+    source = source.replace('struct bq2560x_charger_info {',
+                            'struct bq2560x_charger_info {\n\tu8 stock_pn;')
+    if '#include "cx60-charger-variants.h"' not in source:
+        source = '#include "yh41s-charge-current.h"\n#include "cx60-charger-variants.h"\n' + source
+    source = source.replace('static int bq2560x_write(',
+                            (HERE/'charger-identify.c').read_text()+'\nstatic int bq2560x_write(', 1)
     start = source.index('\tret = bq2560x_read(info,BQ2560X_REG_B, &val);')
     end = source.index('\n\ti2c_set_clientdata(client, info);', start)
     source = source[:start] + '''
-\t/* P720S20's captured charger is at 0x6b and reports REG0B=0x14. */
-\tret = bq2560x_read(info, BQ2560X_REG_B, &val);
+\tret = cx60_identify(info);
+\tif (ret)
+\t\treturn ret;
+''' + source[end:]
+    probe = source.index('static int bq2560x_charger_probe(')
+    source = source[:probe] + source[probe:].replace('\tunsigned char val = 0;\n', '', 1)
+    # Alternate address belongs to this original DT device's lifetime/IRQ.
+    source = source.replace('devm_request_threaded_irq(&info->client->dev, info->client->irq,',
+                            'devm_request_threaded_irq(info->dev, info->client->irq,')
+    source = source.replace('enable_irq_wake(client->irq);', 'enable_irq_wake(info->client->irq);')
+    source = replace(source, 'bq2560x_charger_set_current', '''
+\tu8 code = cx60_charge_code(info->client->addr, info->stock_pn, cur / 1000);
+\treturn bq2560x_update_bits(info, BQ2560X_REG_2, BQ2560X_REG_ICHG_MASK, code);''')
+    source = replace(source, 'bq2560x_charger_get_current', '''
+\tu8 value;
+\tint ret = bq2560x_read(info, BQ2560X_REG_2, &value);
 \tif (ret < 0)
 \t\treturn ret;
-\tif (client->addr != 0x6b || (val & 0x7c) != 0x14)
-\t\treturn dev_err_probe(dev, -ENODEV, "unexpected P720S20 charger ID %#x\\n", val);
-\tinfo->chip_type = CHIP_SGM41511;
-\tstrscpy(info->charge_ic_vendor_name, "P720S20-0x14",
-\t\tsizeof(info->charge_ic_vendor_name));
-''' + source[end:]
+\t*cur = cx60_charge_ma(info->client->addr, value) * 1000;
+\treturn 0;''')
+    source = replace(source, 'bq2560x_charger_set_termina_cur', '''
+\tint ret;
+\tif (info->client->addr == 0x1a) {
+\t\tret = bq2560x_update_bits(info, 0x0d, BIT(0), cur > 240 ? 0 : BIT(0));
+\t\tif (ret)
+\t\t\treturn ret;
+\t}
+\treturn bq2560x_update_bits(info, BQ2560X_REG_3,
+\t\tBQ2560X_REG_TERMINAL_CUR_MASK, cx60_term_code(info->client->addr, cur));''')
     source = replace(source, 'bq2560x_charger_set_termina_vol', '''
 \tu8 code;
 \t/* Actual stock SQC setter: same upward encoding and range. */
@@ -153,6 +178,9 @@ def apply(kernel):
     path.write_text(source)
     battery.write_text(updated_battery)
     (battery.parent/'changxing60-charge-profile.h').write_bytes((HERE/'charge-profile.h').read_bytes())
+    (battery.parent/'cx60-charger-variants.h').write_bytes((HERE/'charger-variants.h').read_bytes())
+    # The stock P720S20 binary independently uses this same SGM41513 codec.
+    (battery.parent/'yh41s-charge-current.h').write_bytes((HERE.parent/'yuanhang41s/charge-current.h').read_bytes())
     for name, marker, addition in (
         ('drivers/power/supply/Kconfig', 'config CHARGER_BQ2560X_SPRD',
          'config CHARGER_BQ2560X_SPRD\n\ttristate "Unisoc BQ2560x charger"\n\tdepends on I2C && CHARGER_MANAGER && GPIOLIB\n'),

@@ -223,6 +223,10 @@ int main(void){
  run(&r);assert(!enables&&!r.vbus&&!queued&&sw.role==USB_ROLE_DEVICE);
  r=reset();power.usb=cc.usb=1;supply_error=-EPROBE_DEFER;
  run(&r);assert(!enables&&!supply_gets&&sw.role==USB_ROLE_DEVICE);
+ /* Externally powered host data does not consume the local boost supply.
+  * A late/unbound charger must not prevent xHCI using the hub's real VBUS. */
+ r=reset();policy=true;power.usb=cc.usb=1;supply_error=-EPROBE_DEFER;
+ run(&r);assert(!enables&&!supply_gets&&sw.role==USB_ROLE_HOST&&r.external_host);
 ''' if lazy_boost else '') + '\n}\n'
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -77,7 +77,8 @@ start() {
 }
 ''')
     service.chmod(0o755)
-    (root / 'etc/rc.d/S18e5-y60-audio').symlink_to('../init.d/e5-y60-audio')
+    runpy.run_path(str(Path(__file__).resolve().parents[1] / 'e5/stage.py'))['link'](
+        root, 'S18e5-y60-audio', 'e5-y60-audio')
 
 
 def stage_audio(root):

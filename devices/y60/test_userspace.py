@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 TOP = HERE.parents[1]
@@ -173,6 +174,35 @@ int main(void) {
 
 
 class Package(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'Offline service links require POSIX')
+    def test_repeat_y60_staging_keeps_audio_service_link(self):
+        real_run = runpy.run_path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def base_stage(target, *, profile):
+                self.assertEqual(profile, 'y60')
+                for name in ('etc/e5', 'etc/rc.d', 'etc/init.d', 'opt/e5', 'usr/libexec'):
+                    (target/name).mkdir(parents=True, exist_ok=True)
+                (target/'opt/e5/e5-audio-dsp').write_bytes(
+                    (TOP/'rootfs/overlay/opt/e5/e5-audio-dsp').read_bytes())
+            def dependency(path, *args, **kwargs):
+                if Path(path).resolve() == (TOP/'devices/m8/stage.py').resolve():
+                    return {'stage': base_stage}
+                return real_run(path, *args, **kwargs)
+            with patch.object(runpy, 'run_path', side_effect=dependency):
+                STAGE['stage'](root)
+                first = {name:p.read_bytes() for name in ('usr/lib/e5/y60_audio.py', 'etc/init.d/e5-y60-audio')
+                         if (p:=root/name).is_file()}
+                STAGE['stage'](root)
+                for name, data in first.items():
+                    self.assertEqual((root/name).read_bytes(), data)
+                service = root/'etc/rc.d/S18e5-y60-audio'
+                self.assertEqual(os.readlink(service), '../init.d/e5-y60-audio')
+                service.unlink()
+                service.symlink_to('../init.d/foreign-service')
+                with self.assertRaisesRegex(ValueError, 'Unexpected service link'):
+                    STAGE['stage'](root)
+
     @unittest.skipIf(os.name == 'nt', 'POSIX startup execution runs in WSL')
     def test_missing_sco_control_no_longer_prevents_the_analog_route(self):
         original = (TOP/'rootfs/overlay/opt/e5/e5-audio-dsp').read_text()

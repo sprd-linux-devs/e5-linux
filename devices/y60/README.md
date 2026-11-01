@@ -41,9 +41,12 @@ Y60 为显式选择的实验 profile，`tools/build-release.py --profiles all` �
 
 - UMP962x syscon 偏移从原厂 DT 取得；缺失的 GPIO/extcon 不强制绑定。
 - 保留原厂 `otg-vbus` 子节点、BC1.2/OPA 次序、50ms 首次喂狗、500ms OTG 检查、15s 喂狗。
-- 3050mAh、4340mV、fullbatt 4300mV、结束电流120mA、JEITA/OCV/映射均来自本机 DT。
+- 3050mAh、4340mV、fullbatt 4300mV、结束电流120mA、温区/OCV/映射来自本机 DT。
+- 按用户要求，仅本机匹配电池的 DCP 输入、CC 和正常温区 CC 请求改为2.5A；
+  ETA6937 实际输入档为2A、CC为2.45A，保留低温/高温降流及其他USB类型。
+  详情见 [充电调整与验证边界](CHARGING-20261101.zh-CN.md)。
 - 原厂 REG7 输入档为300/500/800/1200/1500/2000/3000/5000mA；DT DCP 请求
-  `[11500000,1150000]`，不能把异常的11.5A输入请求视为设备可用功率。
+  `[11500000,1150000]`，实际CM按CC/输入读取，不能把异常的11.5A视为设备可用功率。
 - **与原厂不同：**旧 KO 每次 feed_watchdog 都无条件覆盖成4440mV和固定电流，
   与4340mV DT冲突。移植版只写REG0喂狗位，保留CM/JEITA选择，不复制这段固定覆盖。
 - I²C/PMIC失败不假报成功；充电/OTG取消、probe失败、卸载和PM路径均有清理。

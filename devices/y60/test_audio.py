@@ -2,6 +2,7 @@
 """Compile the Y60 PA callback with a fake profile API; no hardware access."""
 from pathlib import Path
 import argparse
+import os
 import runpy
 import subprocess
 import tempfile
@@ -9,13 +10,19 @@ import unittest
 
 HERE = Path(__file__).resolve().parent
 AUDIO = runpy.run_path(str(HERE/'audio.py'))
-parser = argparse.ArgumentParser()
-parser.add_argument('--kernel', type=Path, required=True)
-args, remaining = parser.parse_known_args()
-SOURCE = (args.kernel/AUDIO['RELATIVE']).read_text()
+SOURCE = None
 
 
 class Speaker(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        global SOURCE
+        if SOURCE is None:
+            kernel = os.environ.get('Y60_TEST_KERNEL')
+            if not kernel:
+                raise unittest.SkipTest('Set Y60_TEST_KERNEL to the prepared Y60 source')
+            SOURCE = (Path(kernel)/AUDIO['RELATIVE']).read_text()
+
     def test_only_the_y60_callback_changes(self):
         changed = AUDIO['transform'](SOURCE)
         self.assertEqual(AUDIO['transform'](changed), changed)
@@ -73,4 +80,8 @@ int main(void) {
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--kernel', type=Path, required=True)
+    args, remaining = parser.parse_known_args()
+    SOURCE = (args.kernel/AUDIO['RELATIVE']).read_text()
     unittest.main(argv=[__file__,*remaining])

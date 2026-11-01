@@ -84,6 +84,10 @@
 	window.addEventListener('message', (e) => {
 		const msg = e.data;
 		if (e.source !== window.parent || !msg || typeof msg != 'object') return;
+		if (msg.e5 === 'hardware-key' && !blank && !inputBlocked && keyFn &&
+		    (msg.kind === 'call' || (capturePower && (msg.kind === 'power' || msg.key === 'HangupPhone')))) {
+			keyFn({kind:msg.kind,key:msg.key,code:msg.code,repeat:!!msg.repeat});
+		}
 		if (msg.e5 == 'input-blocked') inputBlocked = !!msg.on;
 		if (msg.e5 == 'blank') blank = !!msg.on;
 		if (msg.e5 == 'touch') touch = msg.on !== false;

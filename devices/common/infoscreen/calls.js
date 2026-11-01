@@ -59,6 +59,18 @@ window.T551MCalls = (() => {
         // Manual/external wake must show it even if no new call event arrives.
         if (!stopped && !blank && latest) update(latest);
     }
+    function forwardKey(event) {
+        // A keypad event can land on the shell after focus moves away from
+        // the call frame. Send it through the same SDK/phone key handler;
+        // never issue another call action or unlock the underlying screen.
+        if (event.currentTarget !== window || blank || appOpen?.id !== 'phone' || T551MPower.isOpen()) return false;
+        const kind = keyKind(event);
+        if (kind !== 'call' && kind !== 'power' && event.key !== 'HangupPhone') return false;
+        if (!appCapturePower && (kind !== 'call' || locked || T551M.isLocked())) return false;
+        event.preventDefault();event.stopImmediatePropagation();resetIdle();
+        if (event.type === 'keydown') toApp({e5:'hardware-key',kind,key:event.key,code:event.code,repeat:event.repeat});
+        return true;
+    }
     async function pollCalls() {
         clearTimeout(pollTimer);pollTimer=null;
         if(stopped || streaming || polling)return;
@@ -92,5 +104,5 @@ window.T551MCalls = (() => {
     }
     window.addEventListener('pagehide',()=>{stopped=true;stream?.close();clearTimeout(pollTimer);listeners.clear();});
     window.addEventListener('pageshow',event=>{if(event.persisted){stopped=false;booted=false;boot();}});
-    return {active,update,attach,boot,subscribe,screenWake};
+    return {active,update,attach,boot,subscribe,screenWake,forwardKey};
 })();

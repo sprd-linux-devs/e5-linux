@@ -198,9 +198,34 @@ const PLATFORM_ERRORS = [
     "Özel voltajla beklenmeyen kapanma oldu; fabrika voltajı geri yüklendi"
   ],
   [
-    "Secure firmware voltage ABI is not verified",
-    "固件电压接口尚未验证",
-    "Güvenli ürün yazılımının voltaj arayüzü doğrulanmadı"
+    "CPU voltage adjustment is not supported on this SoC",
+    "当前芯片尚未适配电压调整",
+    "Bu çipte CPU voltaj ayarı desteklenmiyor"
+  ],
+  [
+    "CPU voltage interface is missing from this kernel",
+    "当前内核缺少 CPU 调压接口，需要更新配套内核和模块",
+    "Bu çekirdekte CPU voltaj arayüzü eksik; çekirdeği ve eşleşen modülleri güncelleyin"
+  ],
+  [
+    "SML partitions are not ready; refresh after initialization",
+    "SML 分区尚未就绪，请稍后刷新",
+    "SML bölümleri hazır değil; başlatma tamamlanınca yenileyin"
+  ],
+  [
+    "SML partitions could not be read; refresh and check storage",
+    "无法读取 SML 分区，请刷新并检查存储状态",
+    "SML bölümleri okunamadı; yenileyin ve depolamayı denetleyin"
+  ],
+  [
+    "SML voltage ABI could not be established",
+    "尚未匹配到本机 SML 的调压协议，请保留原厂电压",
+    "Bu SML'nin voltaj protokolü doğrulanamadı; fabrika voltajını koruyun"
+  ],
+  [
+    "SML compatibility checker is not ready; refresh after installation",
+    "SML 兼容性检查组件尚未就绪，请安装完成后刷新",
+    "SML uyumluluk denetleyicisi hazır değil; kurulumdan sonra yenileyin"
   ],
   [
     "CPU driver failed to initialize; reboot to restore default voltage",

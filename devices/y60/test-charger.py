@@ -7,6 +7,7 @@ register algorithms into a second implementation. Run inside WSL with cc.
 from pathlib import Path
 import argparse
 import re
+import runpy
 import subprocess
 import tempfile
 
@@ -27,9 +28,25 @@ def main():
     args=p.parse_args()
     path=(args.kernel/'drivers/power/supply/eta6937-charger.c') if args.kernel else HERE/'eta6937-charger.c'
     source=path.read_text(encoding='utf-8')
+    policy=runpy.run_path(str(HERE/'charger.py'))['dcp_charge_policy']
+    native=('int sprd_battery_get_battery_info(void) {\n'
+            '\tsprd_battery_parse_step_chg_table(info, battery_np, psy);\n}\n')
+    changed=policy(native)
+    assert policy(changed)==changed
+    assert changed.count('y60_dcp_profile(info)')==1
+    assert changed.index('sprd_battery_parse_step_chg_table')<changed.index('y60_dcp_profile(info)')
+    for bad in ('unknown',native.replace('sprd_battery_parse_step_chg_table','unknown')):
+        try:policy(bad)
+        except ValueError:pass
+        else:raise AssertionError('Unrecognized battery parser accepted')
+    profile=(HERE/'charge-profile.h').read_text()
+    if args.kernel:
+        assert (args.kernel/'drivers/power/supply/y60-charge-profile.h').read_text()==profile
+        prepared=(args.kernel/'drivers/power/supply/sprd_battery_info.c').read_text()
+        assert policy(prepared)==prepared and prepared.count('y60_dcp_profile(info)')==1
     constants='\n'.join(re.findall(r'^#define ETA_.*$',source,re.M))
     tables='\n'.join(re.findall(r'static const u32 eta_(?:iin|safety_current)\[\] = \{.*?\n\};',source,re.S))
-    names=('eta_read','eta_update','eta_floor','eta_set_input','eta_set_current',
+    names=('eta_read','eta_update','eta_floor','eta_safety_code','eta_set_input','eta_set_current',
            'eta_get_current','eta_set_voltage','eta_charge','eta_feed','eta_watching',
            'eta_watchdog_work','eta_otg_work','eta_get','eta_set','eta_writeable',
            'eta_enable_otg','eta_disable_otg','eta_otg_enabled','eta_hw_init','eta_stop',
@@ -120,7 +137,14 @@ static void *dev_get_drvdata(struct device *d) {return d->data;}
 static void alarm_cancel(struct alarm *a) {a->armed=false;}
 static int ktime_set(int s,int n) {(void)n;return s;}
 static void alarm_start_relative(struct alarm *a,int time) {(void)time;a->armed=true;}
-struct sprd_battery_info {int constant_charge_voltage_max_uv;struct {int unknown_cur,dcp_cur;} cur;};
+#define SPRD_BATTERY_JEITA_DCP 0
+struct sprd_battery_jeita_table {int temp,recovery_temp,current_ua,term_volt;};
+struct sprd_battery_info {
+ int constant_charge_voltage_max_uv,charge_full_design_uah,voltage_min_design_uv,constant_charge_current_max_ua;
+ struct {int unknown_cur,dcp_cur,dcp_limit,sdp_cur,sdp_limit,cdp_cur,cdp_limit,unknown_limit;} cur;
+ struct sprd_battery_jeita_table *jeita_table[4];
+ unsigned int sprd_battery_jeita_size[4],max_current_jeita_index[4];
+};
 static struct sprd_battery_info battery;
 static int battery_error,battery_puts;
 static int sprd_battery_get_battery_info(struct power_supply *p,struct sprd_battery_info *b) {(void)p;*b=battery;return battery_error;}
@@ -138,7 +162,8 @@ static void reset(void) {
  eta.pmic=&pmic;eta.pd_mask=1;eta.battery_max_mv=4340;eta.ready=true;
  eta.watchdog.fn=eta_watchdog_work;eta.otg_check.fn=eta_otg_work;
  read_error=write_error=-1;pmic_error=reads=writes=pmic_writes=cancels=0;
- battery=(struct sprd_battery_info){4340000,{1050000,1150000}};
+ battery=(struct sprd_battery_info){.constant_charge_voltage_max_uv=4340000,
+  .cur={.unknown_cur=1050000,.dcp_cur=11500000,.dcp_limit=1150000}};
  battery_error=battery_puts=0;
 }
 static int set(enum power_supply_property p,int v) {union power_supply_propval x={.intval=v};return eta_set(&psy,p,&x);}
@@ -152,6 +177,9 @@ int main(void) {
   int actual;assert(!eta_get_current(&eta,&actual));
   assert(actual==(int)(550000+(clamp_val(ua,550000U,3050000U)-550000)/100000*100000));
   assert((regs[4]&0x0f)==0x0b && (regs[5]&0x3f)==0x2d);
+  u8 safety=eta_safety_code(ua);
+  assert(eta_safety_current[safety]>=(u32)actual);
+  assert(!safety || eta_safety_current[safety-1]<(u32)actual);
  }
  for(u32 ua=0;ua<12000000;ua+=1000) {
   regs[7]=0xb8;assert(!eta_set_input(&eta,ua));assert((regs[7]&0xf8)==0xb8);
@@ -163,10 +191,63 @@ int main(void) {
   assert(3500U+(regs[2]>>2)*20==(clamp_val(mv,3500U,4340U)-3500)/20*20+3500);
  }
  reset();assert(!eta_hw_init(&eta));assert(battery_puts==1);
- assert((regs[6]&0x0f)==7 && (regs[6]>>4)==3);
+ assert((regs[6]&0x0f)==7 && (regs[6]>>4)==13);
  assert((regs[2]>>2)==42 && (regs[7]&0x0f)==10);
  u8 prior[8];memcpy(prior,regs,8);assert(!eta_feed(&eta));
  for(int i=1;i<8;i++)assert(regs[i]==prior[i]);
+ /* The real stock DCP fields are CC=11.5 A (anomalous), input=1.15 A.
+  * The Y60 policy normalizes both without changing another USB type. */
+ reset();
+ struct sprd_battery_jeita_table rows[]={
+  {0,30,0,4400000},{150,180,700000,4400000},
+  {450,420,1150000,4400000},{570,550,700000,4100000}};
+ struct sprd_battery_jeita_table original[4];memcpy(original,rows,sizeof(rows));
+ battery.charge_full_design_uah=3050000;battery.voltage_min_design_uv=3413000;
+ battery.constant_charge_current_max_ua=-EINVAL;
+ battery.cur.sdp_cur=battery.cur.sdp_limit=500000;
+ battery.cur.cdp_cur=battery.cur.cdp_limit=1500000;
+ battery.cur.unknown_limit=1050000;
+ battery.jeita_table[0]=rows;battery.sprd_battery_jeita_size[0]=4;
+ struct sprd_battery_info native=battery;
+ assert(y60_dcp_profile(&battery));
+ assert(battery.cur.dcp_cur==2500000 && battery.cur.dcp_limit==2500000);
+ assert(battery.constant_charge_current_max_ua==2500000 && battery.max_current_jeita_index[0]==2);
+ assert(battery.cur.sdp_cur==500000 && battery.cur.sdp_limit==500000);
+ assert(battery.cur.cdp_cur==1500000 && battery.cur.cdp_limit==1500000);
+ assert(battery.cur.unknown_cur==1050000 && battery.cur.unknown_limit==1050000);
+ for(int i=0;i<4;i++){
+  assert(rows[i].temp==original[i].temp && rows[i].recovery_temp==original[i].recovery_temp);
+  assert(rows[i].term_volt==original[i].term_volt);
+  assert(rows[i].current_ua==(i==2?2500000:original[i].current_ua));
+ }
+ assert(!eta_hw_init(&eta));assert((regs[6]>>4)==10 && (regs[6]&15)==7);
+ assert(!eta_set_input(&eta,battery.cur.dcp_limit));assert(eta_iin[regs[7]&7]==2000000);
+ assert(!eta_set_current(&eta,battery.cur.dcp_cur));int actual;
+ assert(!eta_get_current(&eta,&actual) && actual==2450000);
+ /* User stop/current controls and hot/cold voltage/current still apply. */
+ assert(!eta_set_current(&eta,700000));assert(!eta_get_current(&eta,&actual) && actual==650000);
+ assert(!eta_set_voltage(&eta,4100));assert(3500+(regs[2]>>2)*20==4100);
+ assert(!y60_dcp_profile(&battery));
+ for(int n=0;n<8+4*4;n++) {
+  battery=native;memcpy(rows,original,sizeof(rows));
+  switch(n){
+  case 0:battery.charge_full_design_uah++;break;
+  case 1:battery.constant_charge_voltage_max_uv++;break;
+  case 2:battery.voltage_min_design_uv++;break;
+  case 3:battery.cur.dcp_cur++;break;
+  case 4:battery.cur.dcp_limit++;break;
+  case 5:battery.jeita_table[0]=NULL;break;
+  case 6:battery.sprd_battery_jeita_size[0]--;break;
+  case 7:battery.sprd_battery_jeita_size[0]++;break;
+  default:{int r=(n-8)/4;switch((n-8)%4){
+   case 0:rows[r].temp++;break;case 1:rows[r].recovery_temp++;break;
+   case 2:rows[r].current_ua++;break;case 3:rows[r].term_volt++;break;
+  }} }
+  struct sprd_battery_info saved=battery;
+  struct sprd_battery_jeita_table saved_rows[4];memcpy(saved_rows,rows,sizeof(rows));
+  assert(!y60_dcp_profile(&battery));
+  assert(!memcmp(&saved,&battery,sizeof(battery)) && !memcmp(saved_rows,rows,sizeof(rows)));
+ }
  reset();battery_error=-517;assert(eta_hw_init(&eta)==-517);assert(writes==0);
  reset();battery.constant_charge_voltage_max_uv=0;assert(eta_hw_init(&eta)==-EINVAL);assert(writes==0);
  reset();battery.constant_charge_voltage_max_uv=4500000;assert(eta_hw_init(&eta)==-EINVAL);assert(writes==0);
@@ -218,13 +299,13 @@ int main(void) {
  read_error=-1;write_error=5;assert(set(POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,1550000)==-EIO);
  assert(eta_writeable(&psy,POWER_SUPPLY_PROP_PRESENT));
  assert(!eta_writeable(&psy,POWER_SUPPLY_PROP_HEALTH));
- puts("Y60 ETA production callbacks: register boundaries, I/O faults, DT voltage, charging/OTG/work/PM lifecycle PASS");
+ puts("Y60 ETA production callbacks: DCP policy/thermal isolation, safety steps, register boundaries, I/O faults, DT voltage, charging/OTG/work/PM lifecycle PASS");
  return 0;
 }
 '''
     with tempfile.TemporaryDirectory(prefix='y60-eta-test-') as tmp:
         directory=Path(tmp);c=directory/'check.c';exe=directory/'check'
-        c.write_text(prelude+'\n'+constants+'\n'+tables+'\n'+bodies+'\n'+tests)
+        c.write_text(prelude+'\n'+constants+'\n'+tables+'\n'+bodies+'\n'+profile+'\n'+tests)
         subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-parameter',
                         '-fsanitize=undefined','-fno-sanitize-recover=all',str(c),'-o',str(exe)],check=True)
         subprocess.run([str(exe)],check=True)

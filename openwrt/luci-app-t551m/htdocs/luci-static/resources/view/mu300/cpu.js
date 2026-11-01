@@ -165,7 +165,8 @@ return view.extend({
         const voltageSection = section(text('电压设置','Voltage settings'),text('重启后生效','Applies after reboot'));
         const grid = node('div','cpu-grid mud-cpu-grid'), voltageGrid = node('div','mud-cpu-grid');
         frequency.append(grid); voltageSection.append(voltageGrid);
-        if (!(s.policies || []).some(p=>p.voltage_boot_writable)) voltageSection.append(node('p','mud-note',text('当前内核或固件不支持开机电压调整','Boot voltage adjustment is unavailable')));
+        if (!(s.policies || []).some(p=>p.voltage_boot_writable)) voltageSection.append(node('p','mud-note',
+            s.voltage_unavailable_reason ? M.translate(s.voltage_unavailable_reason) : text('当前内核或固件不支持开机电压调整','Boot voltage adjustment is unavailable')));
         (s.policies || []).forEach(p => {
             const card = node('section','mud-cpu-cluster'), title = node('div','mud-cpu-cluster-head');
             const now = node('strong','cpu-current',p.current == null ? '—' : p.current/1000); now.dataset.current = p.id;

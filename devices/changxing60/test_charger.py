@@ -31,6 +31,94 @@ def function(source,name):
 
 class Charger(unittest.TestCase):
     @unittest.skipIf(os.name=='nt','Linux C compiler required')
+    def test_stock_identity_before_writes_and_alternate_address_ownership(self):
+        code='''#include <assert.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stddef.h>
+typedef uint8_t u8;
+#define EPROBE_DEFER 517
+#define BQ2560X_REG_B 11
+#define CHIP_SGM41542 2
+#define CHIP_SGM41511 1
+#define IS_ERR(p) ((uintptr_t)(p)>=(uintptr_t)-4095)
+#define PTR_ERR(p) ((int)(intptr_t)(p))
+#define dev_err_probe(dev,err,...) (err)
+#define dev_info(...) ((void)0)
+#define strscpy(d,s,n) snprintf(d,n,"%s",s)
+#include <stdio.h>
+struct i2c_client { unsigned int addr; void *adapter; };
+struct bq2560x_charger_info { struct i2c_client *client;void *dev;u8 stock_pn;int chip_type;char charge_ic_vendor_name[20]; };
+static struct i2c_client alternate;
+static int first_error,second_error,extra_error,busy,delays,reads[2],extra_reads,reserves;
+static u8 first_id,second_id,extra_id;
+static void usleep_range(int low,int high) {assert(low==5000&&high==5500);delays++;}
+static struct i2c_client *devm_i2c_new_dummy_device(void *dev,void *adapter,unsigned int addr) {
+    (void)dev;reserves++;assert(addr==0x1a);
+    if(busy)return (void *)(intptr_t)-EBUSY;
+    alternate=(struct i2c_client){addr,adapter};return &alternate;
+}
+static int bq2560x_read(struct bq2560x_charger_info *info,u8 reg,u8 *value) {
+    if(reg==0xa7){extra_reads++;if(extra_error)return extra_error;*value=extra_id;return 0;}
+    assert(reg==11);
+    unsigned int index=info->client->addr==0x1a;
+    reads[index]++;
+    if(index?second_error:first_error)return index?second_error:first_error;
+    *value=index?second_id:first_id;return 0;
+}
+'''+(HERE.parent/'yuanhang41s/charge-current.h').read_text()+'\n'+(HERE/'charger-variants.h').read_text()+'\n'+(HERE/'charger-identify.c').read_text()+'''
+static void reset(void) {
+    first_error=second_error=busy=delays=reads[0]=reads[1]=extra_reads=reserves=0;
+    first_id=0x14;second_id=0;extra_error=-EIO;extra_id=0;
+}
+int main(void) {
+    struct i2c_client client={0x6b,0};
+    struct bq2560x_charger_info info={.client=&client};
+    reset();assert(!cx60_identify(&info));
+    assert(info.client==&client && reads[0]==1 && !reserves && !delays && !strcmp(info.charge_ic_vendor_name,"SGM41511"));
+    for(unsigned int n=0;n<3;n++) {
+        reset();info.client=&client;
+        first_error=n==0?-EIO:n==1?-ENXIO:-EREMOTEIO;
+        assert(!cx60_identify(&info));
+        assert(info.client==&alternate && client.addr==0x6b && reads[0]==3 && reads[1]==1 && reserves==1 && delays==2);
+        assert(!strcmp(info.charge_ic_vendor_name,"SGM41513"));
+    }
+    reset();info.client=&client;first_error=-EPROBE_DEFER;
+    assert(cx60_identify(&info)==-EPROBE_DEFER && !reserves && reads[0]==1 && !delays);
+    reset();info.client=&client;first_id=0xff;
+    assert(cx60_identify(&info)==-ENODEV && !reserves);
+    reset();info.client=&client;first_error=-EIO;busy=1;
+    assert(cx60_identify(&info)==-EBUSY && info.client==&client && !reads[1]);
+    reset();info.client=&client;first_error=-EIO;second_error=-EIO;
+    assert(cx60_identify(&info)==-EIO && info.client==&client && reads[1]==3);
+    reset();info.client=&client;first_error=-EIO;second_id=0xff;
+    assert(cx60_identify(&info)==-ENODEV && info.client==&client);
+    reset();info.client=&client;extra_error=0;extra_id=5;
+    assert(!cx60_identify(&info) && !strcmp(info.charge_ic_vendor_name,"UPM6910H"));
+    for(unsigned int pn=0;pn<16;pn++)for(unsigned int sub=0;sub<2;sub++) {
+        reset();info.client=&client;first_id=(pn<<3)|(sub<<2);
+        bool known=pn<=2||pn==9||pn==12||pn==13;
+        int ret=cx60_identify(&info);
+        assert(known?ret==0:ret==-ENODEV);
+        if(known)assert(info.stock_pn==pn);
+        assert(!reserves && reads[0]==1);
+    }
+    reset();client.addr=0x1a;info.client=&client;
+    assert(!cx60_identify(&info) && !reserves && !reads[0] && reads[1]==1);
+    client.addr=0x3b;assert(cx60_identify(&info)==-ENODEV);
+    assert(cx60_charge_code(0x1a,0,3000)==60 && cx60_charge_ma(0x1a,63)==3000);
+    assert(cx60_term_code(0x1a,130)==10);
+    return 0;
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory);(path/'test.c').write_text(code)
+            subprocess.run(['cc','-std=c11','-O2','-Wall','-Wextra','-Werror',str(path/'test.c'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
+
+    @unittest.skipIf(os.name=='nt','Linux C compiler required')
     def test_factory_voltage_and_hardware_status_with_bus_failures(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
@@ -48,7 +136,8 @@ class Charger(unittest.TestCase):
 #include <stdbool.h>
 typedef uint8_t u8;
 typedef uint32_t u32;
-struct bq2560x_charger_info { bool charging;int chip_type,input_limit_cur_lock;u32 last_limit_cur,actual_limit_cur; };
+struct i2c_client { unsigned int addr; };
+struct bq2560x_charger_info { bool charging;int chip_type,input_limit_cur_lock;u32 last_limit_cur,actual_limit_cur;struct i2c_client *client;u8 stock_pn; };
 #define BIT(n) (1u<<(n))
 #define GENMASK(h,l) (((1u<<((h)-(l)+1))-1)<<(l))
 #define clamp_val(v,lo,hi) ((v)<(lo)?(lo):((v)>(hi)?(hi):(v)))
@@ -60,33 +149,38 @@ struct bq2560x_charger_info { bool charging;int chip_type,input_limit_cur_lock;u
 #define BQ2560X_REG_0 0
 #define BQ2560X_REG_2 2
 #define BQ2560X_REG_4 4
+#define BQ2560X_REG_3 3
 #define BQ2560X_REG_8 8
 #define BQ2560X_REG_TERMINAL_VOLTAGE_MASK 0xf8
+#define BQ2560X_REG_TERMINAL_CUR_MASK 15
 #define POWER_SUPPLY_STATUS_CHARGING 1
 #define POWER_SUPPLY_STATUS_DISCHARGING 2
 #define POWER_SUPPLY_STATUS_NOT_CHARGING 3
 #define POWER_SUPPLY_STATUS_FULL 4
-static u8 regs[12];
+static u8 regs[14];
 static int bus_error;
 static void mutex_lock(int *lock) {assert(!*lock);*lock=1;}
 static void mutex_unlock(int *lock) {assert(*lock);*lock=0;}
 static int bq2560x_read(struct bq2560x_charger_info *i, u8 reg, u8 *value) {
-    (void)i; assert(reg<12); if(bus_error) return -EIO; *value=regs[reg]; return 0;
+    (void)i; assert(reg<14); if(bus_error) return -EIO; *value=regs[reg]; return 0;
 }
 static int bq2560x_update_bits(struct bq2560x_charger_info *i, u8 reg, u8 mask, u8 value) {
-    (void)i; assert(reg<12); if(bus_error) return -EIO;
+    (void)i; assert(reg<14); if(bus_error) return -EIO;
     regs[reg]=(regs[reg]&~mask)|(value&mask); return 0;
 }
 '''
+            fixture+=(HERE.parent/'yuanhang41s/charge-current.h').read_text()+'\n'+(HERE/'charger-variants.h').read_text()+'\n'
             fixture+='\n'.join(line for line in code.splitlines() if re.match(
                 r'#define\s+BQ2560X_(REG_ICHG_LSB|REG_ICHG_MASK|REG_LIMIT_CURRENT_MASK|LIMIT_CURRENT_MAX|LIMIT_CURRENT_OFFSET|REG_IINLIM_BASE)\s',line))+'\n'
             for name in ('bq2560x_charger_get_limit_current','bq2560x_charger_set_limit_current',
                          'bq2560x_charger_set_current','bq2560x_charger_get_current',
                          'bq2560x_charger_set_termina_vol',
-                         'bq2560x_charger_get_termina_vol','bq2560x_charger_get_status'):
+                         'bq2560x_charger_get_termina_vol','bq2560x_charger_get_status',
+                         'bq2560x_charger_set_termina_cur'):
                 fixture+=function(code,name)+'\n'
             fixture+='''int main(void) {
-    struct bq2560x_charger_info i={.chip_type=CHIP_SGM41511,.charging=true}; u32 value;
+    struct i2c_client client={.addr=0x6b};
+    struct bq2560x_charger_info i={.chip_type=CHIP_SGM41511,.charging=true,.client=&client,.stock_pn=2}; u32 value;
     regs[0]=0xe0;regs[2]=0xc0;
     assert(!bq2560x_charger_set_limit_current(&i,2500000,false));
     assert(regs[0]==0xf8 && !i.input_limit_cur_lock);
@@ -114,6 +208,33 @@ static int bq2560x_update_bits(struct bq2560x_charger_info *i, u8 reg, u8 mask, 
         regs[8]=reg;
         assert(bq2560x_charger_get_status(&i)==want);
     }
+    assert(cx60_charger_name(0) && cx60_charger_name(0x14) && !cx60_charger_name(0xff));
+    /* Both factories' current encodings must preserve REG02 boost bits. */
+    for(unsigned addr=0;addr<2;addr++) {
+        client.addr=addr?0x1a:0x6b;
+        for(unsigned ma=0;ma<=5000;ma++) {
+            regs[2]=0xc0;
+            assert(!bq2560x_charger_set_current(&i,ma*1000));
+            assert((regs[2]&0xc0)==0xc0);
+            assert(!bq2560x_charger_get_current(&i,&value));
+            if(addr)assert(value==yh41s_charge_ma(regs[2])*1000);
+            else assert(value==(ma>3000?3000:ma)/60*60000);
+        }
+        for(unsigned ma=0;ma<=1600;ma++) {
+            regs[3]=0xa0;regs[13]=0xf0;
+            assert(!bq2560x_charger_set_termina_cur(&i,ma));
+            assert((regs[3]&0xf0)==0xa0);
+            assert(regs[3]==(0xa0|cx60_term_code(client.addr,ma)));
+            assert(regs[13]==(addr && ma<=240?0xf1:0xf0));
+        }
+    }
+    assert(!bq2560x_charger_set_termina_cur(&i,130) && regs[3]==0xaa && regs[13]==0xf1);
+    client.addr=0x6b;
+    assert(!bq2560x_charger_set_termina_cur(&i,130) && regs[3]==0xa1);
+    assert(cx60_charge_code(0x6b,12,5000)==63 && cx60_charge_code(0x6b,13,5000)==63);
+    client.addr=0x1a;regs[2]=0x80;
+    assert(!bq2560x_charger_set_current(&i,2500000) && regs[2]==0xb7);
+    assert(!bq2560x_charger_get_current(&i,&value) && value==2340000);
     bus_error=1; regs[4]=0x97;
     assert(bq2560x_charger_set_termina_vol(&i,4400)==-EIO && regs[4]==0x97);
     assert(bq2560x_charger_get_termina_vol(&i,&value)==-EIO);
@@ -123,6 +244,8 @@ static int bq2560x_update_bits(struct bq2560x_charger_info *i, u8 reg, u8 mask, 
     i.charging=true;
     assert(bq2560x_charger_set_current(&i,2500000)==-EIO);
     assert(bq2560x_charger_set_limit_current(&i,2500000,false)==-EIO && !i.input_limit_cur_lock);
+    regs[3]=0xa7;regs[13]=0xf0;
+    assert(bq2560x_charger_set_termina_cur(&i,130)==-EIO && regs[3]==0xa7 && regs[13]==0xf0);
     return 0;
 }
 '''

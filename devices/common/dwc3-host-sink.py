@@ -95,6 +95,11 @@ static inline void sprd_ssphy_reset_core''')
 \tif (boost == r->enabled && external == r->external_host &&
 \t    usb_role_switch_get_role(r->sw) ==''')
     patch(glue, '\tif (!host && r->enabled) {', '\tif (!boost && r->enabled) {')
+    # A lazily acquired regulator is needed only when sourcing our own VBUS.
+    # The externally powered role must not fail on an unused boost provider.
+    role_source = edits.get(kernel / glue, (kernel / glue).read_text())
+    if '\tif (host && !r->vbus) {' in role_source:
+        patch(glue, '\tif (host && !r->vbus) {', '\tif (boost && !r->vbus) {')
     patch(glue, '\tret = otg_set_vbus(r->phy->otg, host);', '''\t/* A real, externally powered connection is never a boost target. */
 \tif (boost && !r->enabled &&
 \t    extcon_get_state(r->power_extcon, EXTCON_USB) > 0) {

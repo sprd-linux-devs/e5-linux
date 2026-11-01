@@ -145,6 +145,10 @@ def stage(root, profile='t551m'):
     owner = runpy.run_path(str(Path(__file__).with_name('build-at-owner.py')))['build']()
     shutil.copyfile(owner, root / 'opt/e5/t551m-atd')
     (root / 'opt/e5/t551m-atd').chmod(0o755)
+    voltage_checker = runpy.run_path(str(TOP/'devices/common/build-sml-voltage.py'))['build']()
+    voltage_target = root/'usr/libexec/unisoc-modem/sml-voltage-check'
+    shutil.copyfile(voltage_checker, voltage_target)
+    voltage_target.chmod(0o755)
     runpy.run_path(str(Path(__file__).with_name('ui-cleanup.py')))['cleanup'](root)
     runpy.run_path(str(TOP / 'devices/common/infoscreen/stage.py'))['stage'](root)
     policy = TOP / 'tools/release-ui-policy.py'

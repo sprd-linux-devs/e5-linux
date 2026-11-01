@@ -1,5 +1,10 @@
 # CPU frequency support
 
+> 2026-11-01 现行规则：下列原厂哈希继续作为取证记录及快速白名单；
+> 未命中时使用共享只读算法匹配，不再只按版本/签名判定，也不要求两槽镜像相同。
+> 本文保留此前适配和实测时的历史检查条件。现行实现及边界见
+> [公共调压说明](../../../docs/CPU-CONTROL.zh-CN.md)。
+
 The four GPL source files originate from
 [`Enceka/kernel_sprd_ums9158`, commit `63b8011056a5060e274fc1dcc9051c94d9a7bab8`](https://github.com/Enceka/kernel_sprd_ums9158/tree/63b8011056a5060e274fc1dcc9051c94d9a7bab8):
 

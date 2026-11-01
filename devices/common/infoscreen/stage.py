@@ -56,6 +56,8 @@ def sources():
 	if (fromApp && T551MCalls.active() && (m.e5 === 'exit' || m.e5 === 'input' || (m.e5 === 'key' && m.kind === 'menu'))) return;
 	const send = (msg) => fromIme ? toIme(msg) : toApp(msg);""")
     app = replace(app, ' notificationList = list;', " list = list.filter(n => n.plugin !== 'phone' || !String(n.id).startsWith('call-'));\n notificationList = list;")
+    app = replace(app, "appCapturePower && !blank && !locked",
+                  "appCapturePower && !blank && (!locked || (appOpen?.id === 'phone' && T551MCalls.active()))")
     app = replace(app, "\tsetHTML('st-view', html);", "\tsetHTML('st-view', html);\n\tT551M.settings($('st-view'), v, stCats);")
     for direction in ['rx', 'tx']:
         app = replace(app, f'fmtRate(st.traffic.{direction}_rate)', f'T551M.speed(st.traffic.{direction}_rate)')
@@ -200,6 +202,8 @@ function status() {''')
     index = replace(index, '<section class="page" data-title="adv_info">', '<section class="page" data-title="adv_info"><div id="ad-freshness" hidden></div>')
     app += '\n' + (HERE / 'apn.js').read_text(encoding='utf-8')
     return {'www/app.js': app, 'api.uc': api, 'settings.uc': settings, 'www/index.html': index,
+            'xkb/rules/e5': (HERE / 'xkb/rules/e5').read_text(encoding='utf-8'),
+            'xkb/symbols/e5': (HERE / 'xkb/symbols/e5').read_text(encoding='utf-8'),
             'updates.uc': (HERE / 'base/updates.uc').read_text(encoding='utf-8'),
             'ADAPTATION': 'e5-device-ui-v1\n',
             'www/style.css': scalable_css((HERE / 'base/style.css').read_text(encoding='utf-8')),

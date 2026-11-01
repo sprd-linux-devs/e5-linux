@@ -177,6 +177,25 @@ class StockEvidenceTests(unittest.TestCase):
         self.assertEqual(struct.unpack('<8I',data),
                          (300000,500000,800000,1200000,1500000,2000000,3000000,5000000))
 
+    def test_requested_charge_policy_matches_both_selected_stock_batteries(self):
+        for revision in ('20240108','other'):
+            path=HERE.parents[1]/'work/y60'/revision/'merged-5.dtb'
+            if not path.is_file():
+                self.skipTest('Selected stock DT evidence is not available locally')
+            battery=INSPECT['fdt_nodes'](path.read_bytes())['/battery']
+            expected={
+                'charge-full-design-microamp-hours':[3050000],
+                'constant-charge-voltage-max-microvolt':[4340000],
+                'voltage-min-design-microvolt':[3413000],
+                'charge-dcp-current-microamp':[11500000,1150000],
+                'charge-sdp-current-microamp':[500000,500000],
+                'dcp-jeita-temp-table':[1000,1030,0,4400000,1150,1180,700000,4400000,
+                                       1450,1420,1150000,4400000,1570,1550,700000,4100000],
+            }
+            for key,value in expected.items():
+                with self.subTest(revision=revision,property=key):
+                    self.assertEqual(INSPECT['display'](battery[key]),value)
+
 
 @unittest.skipUnless(os.environ.get('Y60_TEST_COHORT'), 'Set Y60_TEST_COHORT to the built Y60 delivery directory')
 class BuiltKernelTests(unittest.TestCase):
@@ -208,6 +227,15 @@ class BuiltKernelTests(unittest.TestCase):
         self.assertNotIn('sprd-cpufreq-v2-driver.ko',early)
         self.assertTrue((self.root/'Image').is_file())
         self.assertTrue((self.root/'modules.tar').is_file())
+
+    def test_delivered_cpu_module_exposes_boot_voltage_abi(self):
+        config = (self.root/'config').read_text().splitlines()
+        self.assertIn('CONFIG_ARM_SPRD_CPUFREQ_V2=m', config)
+        self.assertIn('CONFIG_SPRD_SIP_SVC=y', config)
+        module = (self.root/'modules/sprd-cpufreq-v2-driver.ko').read_bytes()
+        for interface in (b'voltage_offset_uv', b'scaling_voltage_domain',
+                          b'scaling_voltage_offset', b'scaling_voltage_table'):
+            self.assertIn(interface, module)
 
 
 if __name__ == '__main__':

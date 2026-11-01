@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 import re
 import sys
-import struct
 import subprocess
+import struct
 import time
 
 
@@ -50,7 +50,28 @@ VERIFIED_SIZED_VOLTAGE_FIRMWARE = {
         'sha256': '25447f40532d7dcb2b86b343ae9cfc8fb14f8384011089d68d268f88c31e04c6',
     },
 }
-VOLTAGE_CAPABILITY_CACHE = 'voltage-supported-v7'
+# Whitelist hits are a fast path. A new signed image is checked against the
+# actual DVFS_INIT/decoder/selector call chain by the standalone native helper.
+VOLTAGE_CAPABILITY_CACHE = 'voltage-supported-v9'
+VOLTAGE_SOC_UNSUPPORTED = 'CPU voltage adjustment is not supported on this SoC'
+VOLTAGE_DRIVER_UNSUPPORTED = 'CPU voltage interface is missing from this kernel'
+VOLTAGE_NOT_READY = 'SML partitions are not ready; refresh after initialization'
+VOLTAGE_READ_FAILED = 'SML partitions could not be read; refresh and check storage'
+VOLTAGE_ABI_UNKNOWN = 'SML voltage ABI could not be established'
+VOLTAGE_CHECKER_UNAVAILABLE = 'SML compatibility checker is not ready; refresh after installation'
+
+
+def voltage_module_supported(path):
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    # The module loader still verifies vermagic, relocations and dependencies.
+    # This only checks that our boot parameter is actually declared, so an old
+    # module can retain ordinary frequency control without an unknown argument.
+    return (len(data) >= 20 and data[:6] == b'\x7fELF\x02\x01' and
+            int.from_bytes(data[18:20], 'little') == 183 and
+            re.search(rb'\x00parm=voltage_offset_uv:[^\x00]+\x00', data) is not None)
 
 
 def sized_voltage_firmware(data, expected):
@@ -107,46 +128,79 @@ class Control:
         self.runtime = root / 'run/e5-cpu'
         self.voltage_config = root / 'etc/e5-cpu-voltage.json'
         self.voltage_armed = root / 'etc/e5-cpu-voltage-armed.json'
+        self.voltage_unavailable_reason = None
+
+    def voltage_driver(self):
+        release = read(self.root / 'proc/sys/kernel/osrelease')
+        return self.root / 'lib/modules' / release / 'sprd-cpufreq-v2-driver.ko'
 
     def voltage_supported(self):
-        """Only enable the reverse-engineered ABI for verified SML firmware.
+        """Known images use a fast path; other builds must expose the same ABI.
 
-        Both slots must match: the running secure monitor is selected before
-        Linux. No NV, DTBO, secure firmware or boot partitions are written.
+        Slots may have different versions. Check each one's compatibility,
+        never require byte-for-byte image identity or rewrite either slot.
         """
-        cache = self.runtime / VOLTAGE_CAPABILITY_CACHE
-        if cache.exists():
-            return read(cache) == '1'
-        supported = False
-        compatible = read(self.root / 'sys/firmware/devicetree/base/compatible')
-        compatibles = compatible.split('\0')
-        verified = (VERIFIED_VOLTAGE_FIRMWARE if 'sprd,ums9621' in compatibles else
-                    VERIFIED_UMS9620_VOLTAGE_FIRMWARE if 'sprd,ums9620' in compatibles else ())
-        sized = VERIFIED_SIZED_VOLTAGE_FIRMWARE.get(read(self.root / 'etc/e5/device-profile'))
+        compatibles = read(self.root/'sys/firmware/devicetree/base/compatible').split('\0')
+        if not {'sprd,ums9620','sprd,ums9621'}.intersection(compatibles):
+            self.voltage_unavailable_reason = VOLTAGE_SOC_UNSUPPORTED
+            return False
+        if not voltage_module_supported(self.voltage_driver()):
+            self.voltage_unavailable_reason = VOLTAGE_DRIVER_UNSUPPORTED
+            return False
+        cache = self.runtime/VOLTAGE_CAPABILITY_CACHE
+        cached = read(cache)
+        if cached == '1' or cached.startswith('0:'):
+            self.voltage_unavailable_reason = None if cached == '1' else cached[2:]
+            return cached == '1'
+        verified = VERIFIED_UMS9620_VOLTAGE_FIRMWARE if 'sprd,ums9620' in compatibles else VERIFIED_VOLTAGE_FIRMWARE
+        sized = VERIFIED_SIZED_VOLTAGE_FIRMWARE.get(read(self.root/'etc/e5/device-profile'))
         if sized and sized['compatible'] not in compatibles:
             sized = None
-        if sized:
-            verified = {*verified, sized['sha256']}
-        if verified:
-            hashes = {}
-            for entry in (self.root / 'sys/class/block').glob('*/uevent'):
-                fields = dict(line.split('=', 1) for line in read(entry).splitlines() if '=' in line)
-                name = fields.get('PARTNAME')
-                if name not in ('sml_a', 'sml_b'):
-                    continue
+        checker = self.root/'usr/libexec/unisoc-modem/sml-voltage-check'
+        results = {}
+        failed = False
+        for entry in (self.root/'sys/class/block').glob('*/uevent'):
+            fields = dict(line.split('=',1) for line in read(entry).splitlines() if '=' in line)
+            name = fields.get('PARTNAME')
+            if name not in ('sml_a','sml_b'):
+                continue
+            if name in results:
+                results[name] = False
+                continue
+            try:
+                with (self.root/'dev'/entry.parent.name).open('rb') as stream:
+                    data = stream.read(4*1024*1024+1)
+            except OSError:
+                failed = True
+                continue
+            known = (hashlib.sha256(data).hexdigest() in verified or
+                     bool(sized and sized_voltage_firmware(data,sized)))
+            if known:
+                results[name] = True
+            else:
+                if not checker.is_file():
+                    self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
+                    return False
                 try:
-                    with (self.root / 'dev' / entry.parent.name).open('rb') as stream:
-                        data = stream.read(1024 * 1024 + 1)
-                    identity = sized_voltage_firmware(data, sized) if sized else None
-                    hashes[name] = identity or hashlib.sha256(data).hexdigest()
-                except OSError:
-                    pass
-            supported = (len(hashes) == 2 and
-                         len(set(hashes.values())) == 1 and
-                         hashes['sml_a'] in verified)
-        self.runtime.mkdir(parents=True, exist_ok=True)
-        cache.write_text('1' if supported else '0')
-        return supported
+                    result = subprocess.run([str(checker),'-'],input=data,capture_output=True,timeout=3)
+                    if result.returncode not in (0, 1):
+                        self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
+                        return False
+                    results[name] = result.returncode == 0
+                except (OSError,subprocess.SubprocessError):
+                    # Missing/incomplete helper after a hot update is transient.
+                    self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
+                    return False
+        reason = None
+        if len(results)!=2 or failed:
+            self.voltage_unavailable_reason = VOLTAGE_READ_FAILED if failed else VOLTAGE_NOT_READY
+            return False  # do not cache an early discovery/read failure
+        if not all(results.values()):
+            reason = VOLTAGE_ABI_UNKNOWN
+        self.voltage_unavailable_reason = reason
+        self.runtime.mkdir(parents=True,exist_ok=True)
+        cache.write_text('1' if reason is None else '0:'+reason)
+        return reason is None
 
     def voltage_profile(self):
         if not self.voltage_config.exists():
@@ -170,10 +224,11 @@ class Control:
         if list(self.cpu.glob('policy[0-9]*')):
             return
         release = read(self.root / 'proc/sys/kernel/osrelease')
-        driver = self.root / 'lib/modules' / release / 'sprd-cpufreq-v2-driver.ko'
+        driver = self.voltage_driver()
         if not release or not driver.exists():
             return
         offsets = [0, 0, 0]
+        keep_profile = False
         try:
             # A marker survives crashes, hard power loss and failed boots.
             # Normal rc shutdown removes it; a stale marker disarms the profile.
@@ -181,20 +236,26 @@ class Control:
                 raise ValueError('Unclean shutdown with custom voltage; restored factory voltage')
             offsets = self.voltage_profile()
             if any(offsets) and not self.voltage_supported():
-                raise ValueError('Secure firmware voltage ABI is not verified')
+                keep_profile = self.voltage_unavailable_reason in (VOLTAGE_DRIVER_UNSUPPORTED, VOLTAGE_NOT_READY, VOLTAGE_READ_FAILED, VOLTAGE_CHECKER_UNAVAILABLE)
+                raise ValueError(self.voltage_unavailable_reason)
         except (OSError, ValueError) as error:
             offsets = [0, 0, 0]
-            if self.voltage_config.exists():
+            # Keep a saved profile if the matching driver has not been installed.
+            # Use factory voltage without reinitializing DVFS later in this boot.
+            if self.voltage_config.exists() and not keep_profile:
                 self.voltage_config.replace(self.voltage_config.with_suffix('.rejected.json'))
-            (self.runtime / 'voltage-error').write_text(str(error))
+            (self.runtime / 'voltage-error').write_text(
+                self.voltage_unavailable_reason if keep_profile else str(error))
             self.disarm_voltage()
         commandline = read(self.root / 'sys/firmware/devicetree/base/chosen/bootargs')
         if re.search(r'(?:^|\s)(?:sprdboot|androidboot)\.mode=charger(?:\s|\0|$)', commandline):
             offsets = [0, 0, 0]
         if any(offsets):
             atomic_json(self.voltage_armed, {'offsets': offsets})
-        subprocess.run(['insmod', str(driver), 'voltage_offset_uv=' + ','.join(map(str, offsets))],
-                       check=True, capture_output=True, text=True)
+        command = ['insmod', str(driver)]
+        if voltage_module_supported(driver):
+            command.append('voltage_offset_uv=' + ','.join(map(str, offsets)))
+        subprocess.run(command, check=True, capture_output=True, text=True)
         if not list(self.cpu.glob('policy[0-9]*')):
             raise ValueError('CPU driver failed to initialize; reboot to restore default voltage')
 
@@ -218,6 +279,8 @@ class Control:
         rails = {name: number(p / 'microvolts')
                  for p in (self.root / 'sys/class/regulator').glob('regulator.*')
                  if (name := read(p / 'name')).startswith(('vddcpu', 'vddsram'))}
+        voltage_checked = False
+        firmware_supported = False
         for path in sorted(self.cpu.glob('policy[0-9]*')):
             if not re.fullmatch(r'policy[0-9]+', path.name):
                 continue
@@ -229,7 +292,12 @@ class Control:
                     volts.append({'khz': int(pair[0]), 'uv': int(pair[1])})
             domain = number(path / 'scaling_voltage_domain')
             offset = number(path / 'scaling_voltage_offset')
-            editable = domain in (0, 1, 2) and offset is not None and self.voltage_supported()
+            interface = (domain in (0, 1, 2) and offset is not None and
+                         read(path / 'scaling_driver') == 'sprd-cpufreq-v2')
+            if interface and not voltage_checked:
+                firmware_supported = self.voltage_supported()
+                voltage_checked = True
+            editable = interface and firmware_supported
             # Verified SML routes domain 0/1/2 to PMIC CPU1/CPU2/CPU0.
             # Regulator numbering does not follow Linux policy/domain numbering.
             compatible = read(self.root / 'sys/firmware/devicetree/base/compatible').split('\0')
@@ -289,6 +357,8 @@ class Control:
                 'voltage_reboot_required': any(p['voltage_offset'] != p['voltage_next']
                                               for p in policies if p['voltage_offset'] is not None),
                 'voltage_min': -50000, 'voltage_max': 25000, 'voltage_step': 3125,
+                'voltage_unavailable_reason': (self.voltage_unavailable_reason if voltage_checked else
+                    'CPU voltage interface is missing from this kernel' if policies else None),
                 'voltage_error': voltage_error,
                 'overclock_available': False,
                 'last_boot_error': read(self.runtime / 'boot-error') or None}

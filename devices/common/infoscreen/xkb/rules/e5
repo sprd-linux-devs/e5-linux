@@ -1,0 +1,4 @@
+// Keep distribution rules; append phone key names after inet(evdev).
+! include %S/evdev
+! option = symbols
+  e5:keypad = +e5(keypad)

@@ -10,6 +10,17 @@ function cpu_set(id, value) {
 function cpu_link(id, zh, en) {
 	return {id, type:'category', category:id, label:L(zh,en)};
 }
+function cpu_voltage_reason(reason) {
+	const reasons = {
+		'CPU voltage adjustment is not supported on this SoC': '当前芯片尚未适配电压调整',
+		'SML partitions are not ready; refresh after initialization': 'SML 分区尚未就绪，请稍后刷新',
+		'SML partitions could not be read; refresh and check storage': '无法读取 SML 分区，请检查存储',
+		'SML voltage ABI could not be established': '尚未匹配到本机 SML 的调压协议，请保留原厂电压',
+		'SML compatibility checker is not ready; refresh after installation': 'SML 检查组件尚未就绪，请安装后刷新',
+		'CPU voltage interface is missing from this kernel': '当前内核缺少调压接口，请更新配套内核和模块'
+	};
+	return L(reasons[reason] ?? reason, reason);
+}
 const cpu_inventory = cpu_read();
 const cpu_categories = [{
 	id:'cpu', parent:'system', label:L('CPU 设置','CPU settings'),
@@ -78,6 +89,9 @@ for (let inventory in cpu_inventory.policies ?? []) {
 					note:L(`当前 ${p.voltage_offset / 1000} mV · 保存后重启生效`,`Active ${p.voltage_offset / 1000} mV · Reboot to apply`)});
 				push(items,{id:'voltage_note',type:'info',label:L('电压调整说明','Voltage adjustment'),value:L('CPU 与 SRAM 同步偏移','CPU and SRAM offset together'),
 					note:L('建议每次只调一档；崩溃或异常断电后自动回退原厂。关机充电使用原厂电压。','Change one step at a time. An unclean shutdown restores factory voltage. Charger-only boot uses factory voltage.')});
+			} else if (state.voltage_unavailable_reason) {
+				push(items,{id:'voltage_unavailable',type:'info',label:L('电压调整不可用','Voltage adjustment unavailable'),
+					value:cpu_voltage_reason(state.voltage_unavailable_reason)});
 			}
 			for (let v in p.voltages) push(items,{id:`voltage_${v.khz}`,type:'info',label:`${v.khz / 1000} MHz`,value:`${v.uv / 1000} mV`});
 			return items;

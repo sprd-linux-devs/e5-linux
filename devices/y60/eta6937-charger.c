@@ -81,6 +81,21 @@ static u8 eta_floor(const u32 *table, size_t count, u32 value)
 	return i - 1;
 }
 
+static u8 eta_safety_code(u32 requested)
+{
+	/* CC has 100 mA steps, the safety ceiling has mostly 200 mA steps.
+	 * Flooring both independently caps a 2.5 A request at 2.35 A. Choose
+	 * the first safety step covering the actual 2.45 A CC code instead.
+	 * This ceiling does not replace CM's requested CC or thermal limits.
+	 */
+	u32 actual = 550000 + (clamp_val(requested, 550000, 3050000) - 550000) / 100000 * 100000;
+	u8 code = eta_floor(eta_safety_current, ARRAY_SIZE(eta_safety_current), actual);
+
+	if (eta_safety_current[code] < actual && (size_t)code + 1 < ARRAY_SIZE(eta_safety_current))
+		code++;
+	return code;
+}
+
 static int eta_set_input(struct eta6937 *eta, u32 ua)
 {
 	return eta_update(eta, 7, 7, eta_floor(eta_iin, ARRAY_SIZE(eta_iin), ua));
@@ -395,7 +410,7 @@ static int eta_hw_init(struct eta6937 *eta)
 	if (ret)
 		return ret;
 	ret = eta_update(eta, 6, 0xf0,
-		eta_floor(eta_safety_current, ARRAY_SIZE(eta_safety_current), dcp) << 4);
+		eta_safety_code(dcp) << 4);
 	if (ret)
 		return ret;
 	ret = eta_update(eta, 5, BIT(5), 0); /* release forced 550 mA mode */

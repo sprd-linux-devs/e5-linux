@@ -1,8 +1,9 @@
 """A sink may enumerate before the separate charger/boost provider is bound.
 
 Keep real CC, PHY and explicit DT supply requirements. Acquire the actual
-boost regulator before host transition; never substitute a dummy regulator.
-Initially enabled only in the P720S20 profile, pending other-board tests.
+boost regulator before sourcing host transition; never substitute a dummy
+regulator. Opted in by P720S20 and P720S11; external-power role is layered by
+dwc3-host-sink.py and does not require turning on the local boost provider.
 """
 from pathlib import Path
 

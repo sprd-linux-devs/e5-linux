@@ -3,7 +3,6 @@ import importlib.machinery
 import importlib.util
 import json
 import hashlib
-import struct
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,6 +13,13 @@ loader = importlib.machinery.SourceFileLoader('cpu_control', str(SOURCE))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 module = importlib.util.module_from_spec(spec)
 loader.exec_module(module)
+
+
+def fake_voltage_module():
+    header = bytearray(64)
+    header[:6] = b'\x7fELF\x02\x01'
+    header[18:20] = (183).to_bytes(2, 'little')
+    return bytes(header) + b'\0parm=voltage_offset_uv:Boot offsets\0'
 
 
 class CPUControlTest(unittest.TestCase):
@@ -166,6 +172,15 @@ class CPUControlTest(unittest.TestCase):
         (self.policy / 'scaling_voltage_domain').write_text('0')
         (self.policy / 'scaling_voltage_offset').write_text('0')
         self.control.runtime.mkdir(parents=True, exist_ok=True)
+        compat = self.root / 'sys/firmware/devicetree/base/compatible'
+        compat.parent.mkdir(parents=True, exist_ok=True)
+        compat.write_bytes(b'sprd,ums9620\0')
+        release = self.root / 'proc/sys/kernel/osrelease'
+        release.parent.mkdir(parents=True, exist_ok=True)
+        release.write_text('test')
+        driver = self.control.voltage_driver()
+        driver.parent.mkdir(parents=True, exist_ok=True)
+        driver.write_bytes(fake_voltage_module())
         (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).write_text('1')
 
     def test_voltage_is_saved_for_boot_and_does_not_fake_readback(self):
@@ -185,7 +200,7 @@ class CPUControlTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 self.control.apply({'policies':[{'id':'policy0','max':900000,'voltage_next':value}]})
             self.assertEqual(module.read(self.policy/'scaling_max_freq'), '1500000')
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).write_text('0')
+        (self.root / 'sys/firmware/devicetree/base/compatible').write_bytes(b'other,soc\0')
         with self.assertRaisesRegex(ValueError, 'unavailable'):
             self.control.set_item('policy0_voltage_next', '-3125')
         self.assertFalse(self.control.voltage_config.exists())
@@ -253,199 +268,94 @@ class CPUControlTest(unittest.TestCase):
         self.assertFalse(self.control.voltage_armed.exists())
 
 
-class VoltageFirmwareTest(unittest.TestCase):
+class VoltageCapabilityTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.control = module.Control(self.root)
-        self.compatible = self.root / 'sys/firmware/devicetree/base/compatible'
+        self.compatible = self.root/'sys/firmware/devicetree/base/compatible'
         self.compatible.parent.mkdir(parents=True)
-        self.compatible.write_bytes(b'sprd,ums512-base\0sprd,ums9621\0')
-        for slot, dev in [('a', 'mmcblk0p6'), ('b', 'mmcblk0p7')]:
-            path = self.root / 'sys/class/block' / dev / 'uevent'
-            path.parent.mkdir(parents=True)
-            path.write_text('PARTNAME=sml_' + slot + '\n')
-            image = self.root / 'dev' / dev
-            image.parent.mkdir(exist_ok=True)
-            image.write_bytes(slot.encode() * 1024 * 1024)
+        self.compatible.write_bytes(b'sprd,ums9620\0')
+        release=self.root/'proc/sys/kernel/osrelease';release.parent.mkdir(parents=True)
+        release.write_text('test')
+        self.driver=self.control.voltage_driver();self.driver.parent.mkdir(parents=True)
+        self.driver.write_bytes(fake_voltage_module())
+        checker=self.root/'usr/libexec/unisoc-modem/sml-voltage-check'
+        checker.parent.mkdir(parents=True);checker.write_bytes(b'native helper boundary fixture')
+        self.images=[b'audited firmware fixture a',b'audited firmware fixture b']
+        hashes=frozenset(hashlib.sha256(data).hexdigest() for data in self.images)
+        for name in ('VERIFIED_VOLTAGE_FIRMWARE','VERIFIED_UMS9620_VOLTAGE_FIRMWARE'):
+            patcher=patch.object(module,name,hashes);patcher.start();self.addCleanup(patcher.stop)
+        for slot,device,data in (('a','mmcblk0p6',self.images[0]),('b','mmcblk0p7',self.images[1])):
+            node=self.root/'sys/class/block'/device/'uevent';node.parent.mkdir(parents=True)
+            node.write_text('PARTNAME=sml_'+slot+'\n')
+            node=self.root/'dev'/device;node.parent.mkdir(exist_ok=True);node.write_bytes(data)
 
-    def check_hashes(self, hashes):
-        with patch.object(module.hashlib, 'sha256') as sha:
-            sha.return_value.hexdigest.side_effect = hashes
-            result = self.control.voltage_supported()
-            self.assertEqual(sha.call_count, 2)
-            self.assertTrue(all(len(call.args[0]) == 1024 * 1024 for call in sha.call_args_list))
-            return result
+    def test_every_adapted_profile_uses_whitelist_fast_path_with_different_slot_versions(self):
+        profile=self.root/'etc/e5/device-profile';profile.parent.mkdir(parents=True)
+        for name in ('e5','t551m','m8','t512n','yuanhang41s','k1','lym10k','changxing60','y60'):
+            profile.write_text(name)
+            for soc in ('sprd,ums9620','sprd,ums9621'):
+                self.compatible.write_bytes(('sprd,ums512-base\0'+soc+'\0').encode())
+                (self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE).unlink(missing_ok=True)
+                with patch.object(module.subprocess,'run') as run:
+                    self.assertTrue(self.control.voltage_supported(),(name,soc))
+                    run.assert_not_called()
 
-    def lym_fixture(self):
-        payload, certificate = b'fixture executable tables' * 32, b'fixture certificate'
-        image = bytearray(512 + len(payload) + len(certificate))
-        image[:8] = b'DHTB\x01\x00\x00\x00'
-        struct.pack_into('<I', image, 0x30, len(payload))
-        struct.pack_into('<I', image, 0x50, len(image))
-        image[8:40] = hashlib.sha256(payload).digest()
-        image[512:] = payload + certificate
-        identity = dict(compatible='sprd,ums9621', size=len(image),
-                        payload_size=len(payload), sha256=hashlib.sha256(image).hexdigest())
-        profile = self.root / 'etc/e5/device-profile'
-        profile.parent.mkdir(parents=True)
-        profile.write_text('lym10k\n')
-        return bytes(image), identity
-
-    def lym_pair(self, a, b):
-        for dev, data in [('mmcblk0p6', a), ('mmcblk0p7', b)]:
-            (self.root / 'dev' / dev).write_bytes(data)
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink(missing_ok=True)
-
-    def test_lym_complete_signed_image_accepts_only_unused_tail_differences(self):
-        image, identity = self.lym_fixture()
-        with patch.dict(module.VERIFIED_SIZED_VOLTAGE_FIRMWARE, lym10k=identity):
-            for a, b in ((image, image),
-                         (image + bytes(1024 * 1024-len(image)),
-                          image + b'\xff' * (1024 * 1024-len(image)))):
-                self.lym_pair(a, b)
-                self.assertTrue(self.control.voltage_supported())
-
-    def test_lym_header_payload_certificate_and_truncation_are_not_ignored(self):
-        image, identity = self.lym_fixture()
-        changed = []
-        for offset in (0, 4, 0x30, 0x50, 512, len(image)-1):
-            data = bytearray(image)
-            data[offset] ^= 1
-            changed.append(bytes(data))
-        changed += [image[:-1], image + bytes(1024 * 1024 + 1 - len(image))]
-        with patch.dict(module.VERIFIED_SIZED_VOLTAGE_FIRMWARE, lym10k=identity):
-            for bad in changed:
-                with self.subTest(length=len(bad)):
-                    self.lym_pair(image, bad)
-                    self.assertFalse(self.control.voltage_supported())
-
-    def test_lym_known_image_does_not_enable_other_profile_or_soc(self):
-        image, identity = self.lym_fixture()
-        with patch.dict(module.VERIFIED_SIZED_VOLTAGE_FIRMWARE, lym10k=identity):
-            self.lym_pair(image, image)
-            (self.root/'etc/e5/device-profile').write_text('t551m\n')
-            self.assertFalse(self.control.voltage_supported())
-            for compatible in (b'sprd,ums9620\0', b'other,sprd,ums9621\0'):
-                self.lym_pair(image, image)
-                (self.root/'etc/e5/device-profile').write_text('lym10k\n')
-                self.compatible.write_bytes(compatible)
-                self.assertFalse(self.control.voltage_supported())
-
-    def test_lym_missing_slot_and_old_negative_cache(self):
-        image, identity = self.lym_fixture()
-        self.lym_pair(image, image)
-        self.control.runtime.mkdir(parents=True)
-        (self.control.runtime/'voltage-supported-v6').write_text('0')
-        with patch.dict(module.VERIFIED_SIZED_VOLTAGE_FIRMWARE, lym10k=identity):
+    def test_unknown_image_uses_algorithm_result_and_not_a_hash_rejection(self):
+        data=b'unlisted version'
+        (self.root/'dev/mmcblk0p7').write_bytes(data)
+        from types import SimpleNamespace
+        with patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=0)) as run:
             self.assertTrue(self.control.voltage_supported())
-            (self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE).unlink()
-            (self.root/'dev/mmcblk0p7').unlink()
+            self.assertEqual(run.call_count,1)
+            self.assertEqual(run.call_args.kwargs['input'],data)
+            self.assertEqual(run.call_args.args[0][0],str(self.root/'usr/libexec/unisoc-modem/sml-voltage-check'))
+        self.assertEqual((self.root/'dev/mmcblk0p7').read_bytes(),data)
+
+    def test_algorithm_rejection_is_explained_without_any_firmware_write(self):
+        data=b'incompatible firmware'
+        (self.root/'dev/mmcblk0p7').write_bytes(data)
+        from types import SimpleNamespace
+        with patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=1)):
             self.assertFalse(self.control.voltage_supported())
+            self.assertEqual(self.control.voltage_unavailable_reason,module.VOLTAGE_ABI_UNKNOWN)
+        self.assertEqual((self.root/'dev/mmcblk0p7').read_bytes(),data)
 
-    def test_each_verified_firmware_pair_is_supported(self):
-        for digest in module.VERIFIED_VOLTAGE_FIRMWARE:
-            with self.subTest(digest=digest):
-                (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink(missing_ok=True)
-                self.assertTrue(self.check_hashes([digest, digest]))
-
-    def test_mixed_verified_slots_are_rejected(self):
-        self.assertFalse(self.check_hashes(sorted(module.VERIFIED_VOLTAGE_FIRMWARE)))
-
-    def test_m8_firmware_requires_its_soc_and_matching_slots(self):
-        digest = next(iter(module.VERIFIED_UMS9620_VOLTAGE_FIRMWARE))
-        self.assertFalse(self.check_hashes([digest, digest]))
-        self.compatible.write_bytes(b'sprd,ums512-base\0sprd,ums9620\0')
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink()
-        self.assertTrue(self.check_hashes([digest, digest]))
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink()
-        known = next(iter(module.VERIFIED_VOLTAGE_FIRMWARE))
-        self.assertFalse(self.check_hashes([known, known]))
-
-    def test_unknown_or_mismatched_slot_is_rejected(self):
-        known = next(iter(module.VERIFIED_VOLTAGE_FIRMWARE))
-        for hashes in [('unknown', 'unknown'), (known, 'unknown')]:
-            (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink(missing_ok=True)
-            self.assertFalse(self.check_hashes(hashes))
-
-    def test_missing_slot_is_rejected(self):
-        (self.root / 'dev/mmcblk0p7').unlink()
-        with patch.object(module.hashlib, 'sha256') as sha:
-            sha.return_value.hexdigest.return_value = next(iter(module.VERIFIED_VOLTAGE_FIRMWARE))
+    def test_missing_helper_read_error_and_missing_partition_recover_without_negative_cache(self):
+        node=self.root/'dev/mmcblk0p7';data=node.read_bytes();node.unlink()
+        self.assertFalse(self.control.voltage_supported())
+        self.assertEqual(self.control.voltage_unavailable_reason,module.VOLTAGE_READ_FAILED)
+        node.write_bytes(data)
+        self.assertTrue(self.control.voltage_supported())
+        (self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE).unlink()
+        node.write_bytes(b'unknown new version')
+        with patch.object(module.subprocess,'run',side_effect=FileNotFoundError('missing helper')):
             self.assertFalse(self.control.voltage_supported())
+            self.assertEqual(self.control.voltage_unavailable_reason,module.VOLTAGE_CHECKER_UNAVAILABLE)
+        self.assertFalse((self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE).exists())
+
+    def test_old_negative_caches_are_ignored(self):
+        self.control.runtime.mkdir(parents=True)
+        for name in ('voltage-supported','voltage-supported-v6','voltage-supported-v7','voltage-supported-v8'):
+            (self.control.runtime/name).write_text('0')
+        self.assertTrue(self.control.voltage_supported())
+
+    def test_driver_becomes_ready_without_a_sticky_rejection(self):
+        self.driver.unlink();self.assertFalse(self.control.voltage_supported())
+        self.assertEqual(self.control.voltage_unavailable_reason,module.VOLTAGE_DRIVER_UNSUPPORTED)
+        self.driver.write_bytes(fake_voltage_module());self.assertTrue(self.control.voltage_supported())
 
     def test_soc_match_is_a_complete_compatible_entry(self):
-        self.compatible.write_bytes(b'other,sprd,ums9621\0')
-        with patch.object(module.hashlib, 'sha256') as sha:
-            self.assertFalse(self.control.voltage_supported())
-            sha.assert_not_called()
+        for compatible in (b'other,sprd,ums9620\0',b'other,soc\0',b''):
+            self.compatible.write_bytes(compatible);self.assertFalse(self.control.voltage_supported())
+            self.assertEqual(self.control.voltage_unavailable_reason,module.VOLTAGE_SOC_UNSUPPORTED)
 
-    def test_old_negative_cache_is_rechecked_and_new_cache_is_used(self):
-        self.control.runtime.mkdir(parents=True)
-        (self.control.runtime / 'voltage-supported').write_text('0')
-        (self.control.runtime / 'voltage-supported-v3').write_text('0')
-        (self.control.runtime / 'voltage-supported-v5').write_text('0')
-        digest = next(iter(module.VERIFIED_VOLTAGE_FIRMWARE))
-        self.assertTrue(self.check_hashes([digest, digest]))
-        with patch.object(module.hashlib, 'sha256') as sha:
-            self.assertTrue(self.control.voltage_supported())
-            sha.assert_not_called()
-
-    def test_t512n_firmware_is_not_accepted_on_ums9620(self):
-        digest = 'b0beb84a18b4d823bf62ec1ea36a46b960b5ea0a54433d449d8a007968879075'
-        self.assertTrue(self.check_hashes([digest, digest]))
-        self.compatible.write_bytes(b'sprd,ums512-base\0sprd,ums9620\0')
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink()
-        self.assertFalse(self.check_hashes([digest, digest]))
-
-    def test_41s_requires_ums9620_and_identical_verified_sml_slots(self):
-        digest = 'cdfd5fb2186f00ab18e6aca37ee54053704a1e6252dc415aeed190d6892db71b'
-        self.assertFalse(self.check_hashes([digest, digest]))
-        self.compatible.write_bytes(b'sprd,ums9620\0')
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink()
-        self.assertTrue(self.check_hashes([digest, digest]))
-        (self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE).unlink()
-        other = '31425dab4aca8450757ac4207de419d06643b7204776fc7e8da5aab1d68814df'
-        self.assertFalse(self.check_hashes([digest, other]))
-
-    def test_k1_requires_ums9620_and_identical_verified_sml_slots(self):
-        digest = 'efc2e6cf3a83a1dbbedecbea12673a7320520632b7b3f59c9072276f9b24d5eb'
-        self.assertFalse(self.check_hashes([digest, digest]))
-        self.compatible.write_bytes(b'sprd,ums9620\0')
-        cache = self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE
-        cache.unlink()
-        self.assertTrue(self.check_hashes([digest, digest]))
-        for other in ('8207aa5789cbfc5e0e9520c0c34b15b4ae4048f445f4e48bfb802b394a60f99e',
-                      '31425dab4aca8450757ac4207de419d06643b7204776fc7e8da5aab1d68814df'):
-            cache.unlink()
-            self.assertFalse(self.check_hashes([digest, other]))
-
-    def test_changxing60_ufs_requires_own_matching_sml_and_soc(self):
-        digest = 'de9b51aa6381d0af921ae5e1ba6499aff8e99e88c92c53259d62a9106c29553a'
-        self.assertFalse(self.check_hashes([digest, digest]))
-        self.compatible.write_bytes(b'sprd,ums9620\0')
-        cache = self.control.runtime / module.VOLTAGE_CAPABILITY_CACHE
-        cache.unlink()
-        # Use UFS-style SCSI partition names: no MMC-specific discovery.
-        for old, new in (('mmcblk0p6', 'sda6'), ('mmcblk0p7', 'sda7')):
-            (self.root / 'dev' / old).rename(self.root / 'dev' / new)
-            (self.root / 'sys/class/block' / old).rename(self.root / 'sys/class/block' / new)
-        self.assertTrue(self.check_hashes([digest, digest]))
-        cache.unlink()
-        self.assertFalse(self.check_hashes([digest, 'unknown']))
-
-    def test_y60_both_stock_versions_require_matching_slots_and_ums9620(self):
-        first='7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9'
-        second='355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b'
-        self.assertFalse(self.check_hashes([first,first]))
-        self.compatible.write_bytes(b'sprd,ums9620\0')
-        cache=self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE
-        for pair,allowed in (([first,first],True),([second,second],True),
-                             ([first,second],False),([first,'unknown'],False)):
-            cache.unlink(missing_ok=True)
-            self.assertEqual(self.check_hashes(pair),allowed)
+    def test_old_foreign_arch_or_parameterless_modules_cannot_offer_boot_voltage(self):
+        for data in (b'',b'not ELF',fake_voltage_module().replace(b'voltage_offset_uv',b'old_parameter_uv'),
+                     fake_voltage_module().replace((183).to_bytes(2,'little'),(62).to_bytes(2,'little'),1)):
+            self.driver.write_bytes(data);self.assertFalse(self.control.voltage_supported())
 
 
-if __name__=='__main__':
-    unittest.main()
+if __name__=='__main__':unittest.main()

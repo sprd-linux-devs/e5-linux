@@ -32,11 +32,15 @@ def branch(blob, address):
 
 def verify(path):
     data = Path(path).read_bytes()
-    cpu = runpy.run_path(str(CPU))
-    expected = cpu['VERIFIED_SIZED_VOLTAGE_FIRMWARE']['lym10k']
-    if cpu['sized_voltage_firmware'](data, expected) != expected['sha256']:
-        raise ValueError('Not the audited complete LYM-10K-V32 SML image')
-    payload = data[512:512 + expected['payload_size']]
+    # This offline binary audit checks the routines below, not a model hash
+    # allowlist. Signed image lengths and its payload checksum come from DHTB.
+    if len(data)<512 or data[:8]!=b'DHTB\x01\0\0\0':
+        raise ValueError('Expected a complete DHTB image')
+    payload_size = struct.unpack_from('<I',data,0x30)[0]
+    image_size = struct.unpack_from('<I',data,0x50)[0]
+    if not 0<payload_size<=image_size-512 or not image_size<=len(data)<=1048576:
+        raise ValueError('Truncated or invalid DHTB image lengths')
+    payload=data[512:512+payload_size]
     if hashlib.sha256(payload).digest() != data[8:40]:
         raise ValueError('Factory DHTB payload checksum mismatch')
     table = data[0x13e50:0x13e50 + 13]
@@ -50,7 +54,7 @@ def verify(path):
         if branch(data, address) != 0xb0004068:
             raise ValueError('CPU/SRAM adjustment call changed')
     print('Full signed image, DHTB payload checksum, SMC dispatch and paired table calls PASS', flush=True)
-    return data[:expected['size']]
+    return data[:image_size]
 
 
 def verify_backend(image):
