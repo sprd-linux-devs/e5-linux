@@ -17,6 +17,7 @@ def checksum(path):
 def sources(version):
     files = [TOP / 'openwrt/build-modemmanager.sh', TOP / 'openwrt/tests/voice-identity.py',
              TOP / 'openwrt/tests/sim-power.py', TOP / 'openwrt/tests/sim-events.py', TOP / 'openwrt/tests/voice-urc.py',
+             TOP / 'openwrt/tests/modem-startup-reprobe.py',
              TOP / 'openwrt/tests/secondary-sim-metadata.py',
              TOP / 'openwrt/tests/voice-recovery.py', TOP / 'openwrt/tests/voice-hangup.py',
              TOP / 'openwrt/tests/voice-accept.py', TOP / 'openwrt/tests/data-priority-hook.py',

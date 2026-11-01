@@ -81,7 +81,7 @@ static void g_task_return_pointer(GTask *task,void *data,void *destroy){assert(t
 static void g_task_set_task_data(GTask *task,void *data,void *destroy){task->data=data;}
 static void g_task_return_new_error(GTask *task,int domain,int code,const char *message){task->error=code;}
 static GError *g_error_new(int domain,int code,const char *message){GError *e=malloc(sizeof(*e));e->code=code;e->message=strdup(message);return e;}
-static void g_prefix_error(GError **error,const char *prefix){}
+static void g_prefix_error(GError **error,const char *prefix,...){}
 static GError *g_error_copy(const GError *error){return g_error_new(0,error->code,error->message);}
 static int parent_stopped(MMBaseModem *self,void *data,void *error){assert(data);ports_released++;return 1;}
 static struct {int (*initialization_stopped)(MMBaseModem*,void*,void*);} parent={parent_stopped};
@@ -269,7 +269,9 @@ int main(void){
 '''
 with tempfile.TemporaryDirectory() as directory:
     root = Path(directory)
-    (root / 'test.c').write_text(model + processor + function('cards_on_sequence_ready') +
+    (root / 'test.c').write_text(model + processor +
+                               function('cards_on_response','MMBaseModemAtResponseProcessorResult') +
+                               function('cards_on_sequence_ready') +
                                function('power_parse_uint', 'gboolean') +
                                function('power_parse_cfun', 'gboolean') +
                                function('cards_on_testmode_ready') + function('cards_on_probe_ready') +

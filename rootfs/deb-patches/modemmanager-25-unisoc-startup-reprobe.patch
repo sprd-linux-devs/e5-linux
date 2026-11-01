@@ -1,0 +1,111 @@
+Description: Keep internal SIPC startup failures on the native device reprobe path
+ Preserve AT errors, ordering and ownership without a separate retry timer.
+ Startup initialization errors and startup timeout invalidation can recover
+ until the device is removed, cancelled or inhibited. Other plugins and
+ connected-modem timeout policy are unchanged.
+Author: e5-linux
+Forwarded: no
+
+--- a/src/mm-device.c
++++ b/src/mm-device.c
+@@ -400,6 +400,31 @@
+ 
+ /*****************************************************************************/
+ 
++/* A failed startup must not strand an internal SIPC device until a physical
++ * port event. Reuse the native MM device reprobe lifecycle and its timer.
++ * Do not export a half-initialized modem or introduce a second AT owner.
++ */
++static gboolean
++device_retry_unisoc_startup (MMDevice *self, MMBaseModem *modem, const GError *error)
++{
++    if (!g_error_matches (error, MM_CORE_ERROR, MM_CORE_ERROR_ABORTED) ||
++        self->priv->modem != modem || self->priv->inhibited ||
++        g_strcmp0 (mm_base_modem_get_plugin (modem), "unisoc") ||
++        g_strcmp0 (mm_base_modem_get_device (modem), "unisoc-sipc") ||
++        g_cancellable_is_cancelled (mm_base_modem_peek_cancellable (modem)))
++        return FALSE;
++
++    mm_obj_warn (self, "SIPC initialization failed; scheduling native reprobe: %s", error->message);
++    /* Set this BEFORE invalidation: notify::valid removes the old modem and
++     * schedules the existing reprobe. Removal/cancellation/inhibition retain
++     * their normal ownership and cleanup behavior.
++     */
++    mm_base_modem_set_reprobe (modem, TRUE);
++    mm_base_modem_set_valid (modem, FALSE);
++    return TRUE;
++}
++
++
+ static void
+ initialize_ready (MMBaseModem   *modem,
+                   GAsyncResult  *res,
+@@ -411,7 +436,8 @@
+     if (!mm_base_modem_initialize_finish (modem, res, &error)) {
+         if (g_error_matches (error, MM_CORE_ERROR, MM_CORE_ERROR_ABORTED)) {
+             /* FATAL error, won't even be exported in DBus */
+-            mm_obj_err (self, "fatal error initializing: %s", error->message);
++            if (!device_retry_unisoc_startup (self, modem, error))
++                mm_obj_err (self, "fatal error initializing: %s", error->message);
+         } else {
+             /* non-fatal error */
+             mm_obj_warn (self, "error initializing: %s", error->message);
+--- a/src/mm-base-modem.c
++++ b/src/mm-base-modem.c
+@@ -178,6 +178,15 @@
+         mm_obj_err (self, "port %s timed out %u consecutive times, marking modem as invalid",
+                     mm_port_get_device (MM_PORT (port)),
+                     n_consecutive_timeouts);
++        /* A startup AT timeout cancels initialization before it can export
++         * an object. Keep SIPC discovery recoverable through native reprobe.
++         * Ordinary connected-modem timeout behavior is unchanged.
++         */
++        if (!self->priv->valid && self->priv->cancellable &&
++            !g_cancellable_is_cancelled (self->priv->cancellable) &&
++            !g_strcmp0 (mm_base_modem_get_plugin (self), "unisoc") &&
++            !g_strcmp0 (mm_base_modem_get_device (self), "unisoc-sipc"))
++            mm_base_modem_set_reprobe (self, TRUE);
+         g_cancellable_cancel (self->priv->cancellable);
+         return;
+     }
+--- a/src/plugins/unisoc/mm-broadband-modem-unisoc.c
++++ b/src/plugins/unisoc/mm-broadband-modem-unisoc.c
+@@ -829,6 +829,29 @@
+     return g_task_propagate_boolean (G_TASK (res), error);
+ }
+ 
++static MMBaseModemAtResponseProcessorResult
++cards_on_response (MMBaseModem *self,
++                   gpointer context,
++                   const gchar *command,
++                   const gchar *response,
++                   gboolean last_command,
++                   const GError *error,
++                   GVariant **result,
++                   GError **result_error)
++{
++    MMBaseModemAtResponseProcessorResult status;
++
++    status = mm_base_modem_response_processor_no_result_continue (
++        self, context, command, response, last_command, error, result, result_error);
++    /* These commands contain only slot/mode/power values, no identities.
++     * Keep the failure mandatory; recovery belongs to native device reprobe.
++     */
++    if (status == MM_BASE_MODEM_AT_RESPONSE_PROCESSOR_RESULT_FAILURE)
++        g_prefix_error (result_error, "AT%s: ", command);
++    return status;
++}
++
++
+ static void
+ cards_on_sequence_ready (MMBaseModem  *self,
+                          GAsyncResult *res,
+@@ -937,7 +960,7 @@
+      * SIM/mode/data/stack command is mandatory: never power a stack after
+      * its prerequisite failed, or report a partially applied plan as ready. */
+     for (i = 0; i < n; i++)
+-        ctx->cmds[i].response_processor = mm_base_modem_response_processor_no_result_continue;
++        ctx->cmds[i].response_processor = cards_on_response;
+     mm_base_modem_at_sequence (self, (const MMBaseModemAtCommand *) ctx->cmds, NULL, NULL,
+                                (GAsyncReadyCallback) cards_on_sequence_ready, task);
+ }
