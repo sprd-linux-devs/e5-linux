@@ -28,6 +28,14 @@ class PreserveData(unittest.TestCase):
             dev.write_bytes(data)
             (root / 'proc/self/mountinfo').write_text('')
             (root / 'sys/class/block/mmcblk0p70/dev').write_text('179:70')
+            # Model the sysfs partition symlink used by the shared storage
+            # helper, rather than relying on the old mmc name split.
+            entry=root/'sys/class/block/mmcblk0p70'
+            backing=root/'sys/devices/block/mmcblk0/mmcblk0p70'
+            backing.parent.mkdir(parents=True)
+            entry.rename(backing); entry.symlink_to(backing)
+            (backing/'partition').write_text('70\n')
+            (root/'calls').touch()
             payload = root / 'mount/e5linux'
             (payload / 'part-install.conf').write_text('PART_MIB=2048\nDATA_MIB=2048\nGROW_FS=1\n')
             (payload / 'part-install.img.gz').write_bytes(gzip.compress(b'root image' * 100))
@@ -63,7 +71,8 @@ sys.exit(3 if mode=='already-shrunk-bad' or (mode=='post-check-failed' and count
             loader.chmod(0o755)
             gpt = root / 'usr/bin/ucode'
             gpt.write_text('#!/bin/sh\necho gpt >> "$TRACE"\nexit 1\n'); gpt.chmod(0o755)
-            code = SOURCE.replace('[ -b "$dev" ]', '[ -f "$dev" ]')
+            storage=(Path(__file__).resolve().parents[1]/'storage.sh').read_text()
+            code = (storage+'\n'+SOURCE).replace('[ -b "$dev" ]', '[ -f "$dev" ]')
             code = code.replace('mp=/part-install', 'mp=' + str(root / 'mount'))
             for prefix in ('/etc', '/sys', '/proc', '/repair', '/run', '/usr/bin'):
                 code = code.replace(prefix + '/', str(root) + prefix + '/')
@@ -113,6 +122,27 @@ sys.exit(3 if mode=='already-shrunk-bad' or (mode=='post-check-failed' and count
 
 
 class CheckProgress(unittest.TestCase):
+    def test_partition_stats_report_write_progress_without_task_io_accounting(self):
+        progress=(Path(__file__).resolve().parents[1]/'part-progress.sh').read_text()
+        with tempfile.TemporaryDirectory(prefix='e5-write-progress-') as folder:
+            root=Path(folder)
+            for name in ('run','proc/123','dev','sys/class/block/mmcblk0p71'):
+                (root/name).mkdir(parents=True,exist_ok=True)
+            (root/'proc/uptime').write_text('660.12 0\n')
+            (root/'proc/123/status').write_text('State:\tD (disk sleep)\n')
+            (root/'proc/123/wchan').write_text('mmc_wait_for_req_done\n')
+            # There deliberately is no /proc/123/io.
+            (root/'run/part-worker').write_text('123 4194304\n')
+            (root/'run/part-disk').write_text('mmcblk0p71 4096\n')
+            (root/'sys/class/block/mmcblk0p71/stat').write_text('0 0 0 0 0 0 8192 0 0 0 0\n')
+            code=progress.replace('/run/',str(root)+'/run/').replace('/proc/',str(root)+'/proc/').replace('/dev/',str(root)+'/dev/').replace('/sys/',str(root)+'/sys/')
+            script=code+'\nsleep() { rm -f '+str(root)+'/run/part-install.running; }\npart_progress_start; wait "$part_beat"\n'
+            result=subprocess.run(['busybox','ash'],input=script,text=True,capture_output=True,timeout=5)
+            self.assertEqual(result.returncode,0,result.stderr)
+            status=(root/'dev/kmsg').read_text()
+            self.assertIn('2/4 MiB (50%)',status)
+            self.assertIn('writer=123 state=D wait=mmc_wait_for_req_done',status)
+
     def test_checker_state_io_and_last_line_are_visible(self):
         progress=(Path(__file__).resolve().parents[1]/'part-progress.sh').read_text()
         with tempfile.TemporaryDirectory(prefix='e5-part-progress-') as folder:
@@ -193,7 +223,7 @@ chroot() {
 '''
                 script = ('set -eu\n' + fixture +
                           f'stage="{stage}"; node=mmcblk0p71; token=' + 'c' * 32 +
-                          f'; dev=unused; MODE={mode}; nvbackup="{stage}/no-nv"\n' + code)
+                          f'; disk=mmcblk0; dev=unused; MODE={mode}; nvbackup="{stage}/no-nv"\n' + code)
                 script = script.replace('/data/local/tmp/', str(root) + '/')
                 p = subprocess.run(['busybox', 'ash'], input=script, text=True,
                                    capture_output=True, timeout=10)

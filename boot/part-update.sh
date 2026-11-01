@@ -98,14 +98,18 @@ part_update_pending() {
     tar -xf ext4-tools.tar -C tools || { part_fail 'ext4 tools'; return 1; }
     echo '2/5 writing verified image (all payloads are in RAM)' > /run/part-status
     mkfifo image.pipe
+    # The Y60 kernel need not enable TASK_IO_ACCOUNTING. Use the exact target
+    # partition's sector counter in the shared heartbeat in that case.
+    printf '%s %s\n' "$node" "$(awk '{print $7}' "/sys/class/block/$node/stat" 2>/dev/null)" > /run/part-disk
     gzip -dc openwrt.ext4.gz > image.pipe & producer=$!
     dd if=image.pipe of="$dev" bs=1048576 conv=fsync 2>/run/part-dd.err & writer=$!
     echo "$writer $RAW_BYTES" > /run/part-worker
     wait "$writer"; rc1=$?
     [ "$rc1" = 0 ] || kill "$producer" 2>/dev/null
     wait "$producer"; rc2=$?
-    rm -f image.pipe /run/part-worker
+    rm -f image.pipe /run/part-worker /run/part-disk
     [ "$rc1:$rc2" = 0:0 ] || { part_fail 'root write'; return 1; }
+    echo '2/5 reading back and verifying written image (write and flush finished)' > /run/part-status
     got=$(set -o pipefail; head -c "$RAW_BYTES" "$dev" | sha256sum | cut -d' ' -f1) || return 1
     [ "$got" = "$want" ] || { part_fail 'root readback'; return 1; }
     echo '3/5 checking and expanding filesystem' > /run/part-status

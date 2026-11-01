@@ -309,7 +309,7 @@ def patch_vendor_startup(root):
 
 
 def patch_root(root, profile='t551m'):
-    if profile not in ('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60'):
+    if profile not in ('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60'):
         raise ValueError('Unknown device profile: ' + profile)
     patch_vendor_startup(root)
     # Also install through the on-device update hook, after package defaults.
@@ -533,6 +533,6 @@ def patch_root(root, profile='t551m'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
-    parser.add_argument('--profile', choices=('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60'), default='t551m')
+    parser.add_argument('--profile', choices=('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60'), default='t551m')
     args = parser.parse_args()
     patch_root(args.root, args.profile)

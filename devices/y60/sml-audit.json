@@ -1,0 +1,28 @@
+{
+  "reference_sha256": "efc2e6cf3a83a1dbbedecbea12673a7320520632b7b3f59c9072276f9b24d5eb",
+  "payload_bytes": 140528,
+  "payload_sha256": "0ed96bc86a482d07d009683d14a8f579cce8d7d0a775fa694a20267581c4002b",
+  "images": [
+    {
+      "build": "CP21.20240108.0S.GCY",
+      "sha256": "7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9",
+      "payload_equal": true
+    },
+    {
+      "build": "CP21.20240108.0S.GCY",
+      "sha256": "7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9",
+      "payload_equal": true
+    },
+    {
+      "build": "CP21.20240304.1S.GCY",
+      "sha256": "355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b",
+      "payload_equal": true
+    },
+    {
+      "build": "CP21.20240304.1S.GCY",
+      "sha256": "355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b",
+      "payload_equal": true
+    }
+  ],
+  "hardware_validated": false
+}

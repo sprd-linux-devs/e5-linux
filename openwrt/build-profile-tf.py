@@ -21,7 +21,7 @@ import time
 import zipfile
 
 TOP = Path(__file__).resolve().parents[1]
-MODELS = {'e5': ['E5'], 't551m': ['T551M'], 'm8': ['VIPME M8'], 't512n': ['T512N'], 'yuanhang41s': ['ZTE 7546N'], 'k1': ['angelcare K1'], 'lym10k': ['LYM-10K'], 'changxing60': ['ZTE 7552N']}
+MODELS = {'e5': ['E5'], 't551m': ['T551M'], 'm8': ['VIPME M8'], 't512n': ['T512N'], 'yuanhang41s': ['ZTE 7546N'], 'k1': ['angelcare K1'], 'lym10k': ['LYM-10K'], 'changxing60': ['ZTE 7552N'], 'y60': ['CP23NV3']}
 
 
 def digest(path):

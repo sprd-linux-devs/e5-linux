@@ -45,6 +45,11 @@ def convert(raw, out, tools, default_ssid, profile=''):
             shutil.copyfile(raw/name, fw/('changxing60-'+name))
         (fw/'axs15205').mkdir()
         shutil.copyfile(raw/'axs_firmware_easyquick.bin', fw/'axs15205/easyquick.bin')
+    if profile == 'y60':
+        for name in ('audio_route.xml', 'audio_pga.xml'):
+            shutil.copyfile(raw/name, fw/('y60-'+name))
+        if not (fw/'aw87xxx_acf.bin').is_file() or not (fw/'codec.xml').is_file():
+            raise ValueError('missing recipient Y60 amplifier/codec calibration')
     if not list(fw.glob('wifi_board_config*.ini')):
         raise ValueError('missing Wi-Fi board configuration')
     dsp = (raw / 'l_agdsp_a.img').read_bytes()

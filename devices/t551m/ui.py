@@ -25,7 +25,7 @@ PACKAGES = {
 
 
 def stage(root, profile='t551m'):
-    if profile not in ('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60'):
+    if profile not in ('t551m', 'e5', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60'):
         raise ValueError('Unknown device profile: ' + profile)
     root = Path(root)
     # Also stage into archive-only roots; the defaults hook patches package
@@ -60,7 +60,7 @@ def stage(root, profile='t551m'):
             if profile == 'e5' and src.relative_to(plugin / srcdir).as_posix() == 'etc/config/unisoc_modem':
                 # B38 omission belongs to the T551M firmware, not the shared UI.
                 target.write_bytes(target.read_bytes().replace(b"'1,3,5,8,34,39,40,41'", b"'1,3,5,8,34,38,39,40,41'"))
-            if profile in ('m8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60') and src.relative_to(plugin / srcdir).as_posix() == 'etc/config/unisoc_modem':
+            if profile in ('m8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60') and src.relative_to(plugin / srcdir).as_posix() == 'etc/config/unisoc_modem':
                 # Discover this modem's capabilities; no donor band allowlist.
                 target.write_bytes(b''.join(line for line in target.read_bytes().splitlines(keepends=True)
                                            if b'option lte_supported_bands ' not in line))

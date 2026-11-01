@@ -16,7 +16,7 @@ import subprocess
 
 TOP = Path(__file__).resolve().parents[1]
 OWNER = 'e5-profile-kernel-overlay-v1'
-PROFILES = ('e5', 't551m', 'm8', 't512n', 'lym10k', 'changxing60')
+PROFILES = ('e5', 't551m', 'm8', 't512n', 'lym10k', 'changxing60', 'y60')
 
 
 def git(tree, *args):
@@ -211,10 +211,10 @@ def main():
         elif args.profile=='m8':
             env.update(M8_KERNEL=str(source),M8_BUILD=str(objects),M8_OUT=str(out))
             command=['bash','devices/m8/build-probe.sh']
-        elif args.profile=='changxing60':
+        elif args.profile in ('changxing60', 'y60'):
             baseline=Path(config['profiles'][args.profile]['platform_config'].format(workspace=workspace,repo=TOP))
             if not baseline.is_file():raise ValueError('Missing registered UMS9620 baseline: '+str(baseline))
-            command=['python3','devices/changxing60/build-kernel.py','--kernel',str(source),
+            command=['python3',str(TOP/'devices'/args.profile/'build-kernel.py'),'--kernel',str(source),
                      '--build',str(objects),'--base-config',str(baseline),'--out',str(out),'--jobs',str(args.jobs)]
         else:
             prefix=args.profile.upper()

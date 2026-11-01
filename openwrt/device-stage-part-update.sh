@@ -59,6 +59,7 @@ firmware=
 for name in lib/firmware/wcnmodem.bin lib/firmware/gnssmodem.bin lib/firmware/wifi_board_config*.ini \
     lib/firmware/tsx_data lib/firmware/l_agdsp_a.img lib/firmware/audio_structure lib/firmware/dsp_vbc \
     lib/firmware/codec.xml \
+    lib/firmware/y60-audio_route.xml lib/firmware/y60-audio_pga.xml \
     lib/firmware/cvs lib/firmware/aw87xxx_acf.bin lib/firmware/sprd \
     lib/firmware/aw883xx_acf.bin lib/firmware/awinic_params.bin \
     lib/firmware/sitronix_firmware_huaying.dump lib/firmware/sitronix \

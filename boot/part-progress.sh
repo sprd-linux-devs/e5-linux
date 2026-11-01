@@ -15,13 +15,18 @@ part_progress_start() {
                     # this kernel) the disk's sectors-written counter, sampled
                     # against install-part.sh's baseline, is the same number.
                     read -r dname base < /run/part-disk
-                    now=$(awk '{print $7}' "/sys/block/$dname/stat" 2>/dev/null)
-                    case "$now" in ''|*[!0-9]*) ;; *) written=$(( (now - base) * 512 )) ;; esac
+                    now=$(awk '{print $7}' "/sys/class/block/$dname/stat" 2>/dev/null)
+                    case "$base:$now" in *[!0-9:]*|:*|*:) ;; *)
+                        [ "$now" -lt "$base" ] || written=$(( (now - base) * 512 )) ;;
+                    esac
                 fi
                 if [ "${total:-0}" -gt 0 ] && [ -n "$written" ]; then
                     [ "$written" -le "$total" ] || written=$total
                     msg="$msg | $((written / 1048576))/$((total / 1048576)) MiB ($((written * 100 / total))%)"
                 fi
+                worker_state=$(awk '/^State:/ {print $2}' "/proc/$worker/status" 2>/dev/null)
+                worker_wait=$(cat "/proc/$worker/wchan" 2>/dev/null)
+                msg="$msg | writer=$worker state=${worker_state:-?} wait=${worker_wait:-?}"
             fi
             if [ -s /run/part-check ]; then
                 read -r check_pid check_log < /run/part-check

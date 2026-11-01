@@ -22,7 +22,7 @@ def ensure_ttyd_config(root):
 
 
 def prepare(base, root, defaults, profile='m8'):
-    if profile not in ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60'):
+    if profile not in ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60'):
         raise ValueError('Unknown device profile')
     base, root = base.resolve(), root.resolve()
     if os.name == 'nt' or root.exists() or base == Path('/'):
@@ -59,7 +59,7 @@ def prepare(base, root, defaults, profile='m8'):
     (root / 'root').chmod(0o700)
     with tarfile.open(defaults) as archive:
         for item in archive:
-            if profile in ('t512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60') and item.name == 'etc/config/unisoc_modem':
+            if profile in ('t512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60') and item.name == 'etc/config/unisoc_modem':
                 # A clean T512N build takes fresh shared defaults, never a
                 # prebuilt donor's auto_work_mode or LTE capability override.
                 continue
@@ -96,7 +96,7 @@ def prepare(base, root, defaults, profile='m8'):
         fields[1] = password if fields[0] == 'root' else '!'
         lines.append(':'.join(fields))
     put('etc/shadow', '\n'.join(lines) + '\n', 0o600)
-    put('etc/hostname', {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME-M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang-41S', 'k1': 'Angelcare-K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing-60'}[profile] + '\n')
+    put('etc/hostname', {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME-M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang-41S', 'k1': 'Angelcare-K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing-60', 'y60': 'Coolpad-Y60'}[profile] + '\n')
     put('etc/machine-id', '')
     for p in (TOP / 'rootfs/overlay/opt/e5').iterdir():
         if p.is_file():
@@ -107,7 +107,7 @@ def prepare(base, root, defaults, profile='m8'):
     stage_path = 'devices/t551m/configure-rootfs.py' if profile == 't551m' else f'devices/{profile}/stage.py'
     runpy.run_path(str(TOP / stage_path))['stage'](root)
     for path in (root / 'etc/uci-defaults/90-e5',):
-        hostname = {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME-M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang-41S', 'k1': 'Angelcare-K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing-60'}[profile]
+        hostname = {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME-M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang-41S', 'k1': 'Angelcare-K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing-60', 'y60': 'Coolpad-Y60'}[profile]
         path.write_text(path.read_text().replace("hostname='E5'", "hostname='" + hostname + "'"))
     put('etc/e5/image-form', 'standalone\n')
     put('etc/e5/image-version', profile + '-tf\n')

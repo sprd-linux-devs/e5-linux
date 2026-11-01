@@ -9,6 +9,33 @@ spec.loader.exec_module(bt)
 
 
 class AddressRecovery(unittest.TestCase):
+    def test_y60_valid_imported_identity_does_not_block_attach_or_need_android_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / 'etc/e5/device-profile'
+            firmware = root / 'lib/firmware/sprd/marlin3lite_pskey.bin'
+            profile.parent.mkdir(parents=True)
+            firmware.parent.mkdir(parents=True)
+            profile.write_text('y60\n')
+            original = bytes(range(20)) + bytes.fromhex('010000000002') + bytes(range(150))
+            firmware.write_bytes(original)
+            self.assertFalse(bt.prepare(root))
+            self.assertEqual(firmware.read_bytes(), original)
+
+    def test_y60_bad_identity_still_requires_its_own_android_adapter_address(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / 'etc/e5/device-profile'
+            firmware = root / 'lib/firmware/sprd/marlin3lite_pskey.bin'
+            profile.parent.mkdir(parents=True)
+            firmware.parent.mkdir(parents=True)
+            profile.write_text('y60\n')
+            original = bytes(176)
+            firmware.write_bytes(original)
+            with self.assertRaisesRegex(ValueError, 'address format'):
+                bt.prepare(root)
+            self.assertEqual(firmware.read_bytes(), original)
+
     def test_only_adapter_address_is_recovered_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

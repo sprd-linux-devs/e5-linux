@@ -35,6 +35,9 @@ def full_network_defaults():
     extension. Suppress IPv4 router/DNS options only for this USB host's tag.
     """
     source = (TOP/'openwrt/overlay/etc/uci-defaults/90-e5').read_text()
+    # Fresh RAM roots follow the same no-extra-EPS-cycle policy as releases.
+    source = source.replace("set network.wan.init_epsbearer='default'",
+                            "set network.wan.init_epsbearer='keep'")
     source = source.replace("hostname='E5'", "hostname='Changxing-60'")
     source = source.replace('02:50:00:00:e5:02', '02:50:00:00:60:02')
     anchor = "set dhcp.usb_host.tag='usbhost'\n"
@@ -191,7 +194,7 @@ done < /etc/e5/ram-ui-module-order
         put('etc/config/dhcp', "config dnsmasq\n option authoritative '1'\n\n"
             "config dhcp 'lan'\n option interface 'lan'\n")
         put('etc/config/network', (root/'etc/config/network').read_text() +
-            "\nconfig interface 'wan'\n option proto 'modemmanager'\n option device 'unisoc-sipc'\n option apn_auto '1'\n option iptype 'ipv4v6'\n option disable_modem '0'\n option init_epsbearer 'default'\n option sourcefilter '0'\n")
+            "\nconfig interface 'wan'\n option proto 'modemmanager'\n option device 'unisoc-sipc'\n option apn_auto '1'\n option iptype 'ipv4v6'\n option disable_modem '0'\n option init_epsbearer 'keep'\n option sourcefilter '0'\n")
         put('etc/init.d/e5-ram-probe', '#!/bin/sh /etc/rc.common\nSTART=08\nstart() { logger -t cx60-ram "Full RAM trial; factory storage read-only; Android fallback retained"; }\n', 0o755)
     password = subprocess.check_output(['openssl', 'passwd', '-6', 'root'], text=True).strip()
     fields = [line.split(':') for line in (root / 'etc/shadow').read_text().splitlines()]

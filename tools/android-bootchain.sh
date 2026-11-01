@@ -90,6 +90,12 @@ case "$(getprop ro.product.model)" in
         [ "$(getprop ro.product.device)" = P720S20 ] || fail 'unknown Changxing60 board'
         PARTS="$PARTS dtbo vendor_boot" ;;
     'ZTE 7546N') [ "$(getprop ro.product.device)" = P720S11 ] || fail 'unknown 41S board' ;;
+    CP23NV3)
+        [ "$(getprop ro.product.device)" = CP23NV3 ] || fail 'unknown Y60 board'
+        [ "$(getprop ro.boot.verifiedbootstate)" = orange ] || fail 'unlocked bootloader required'
+        # Its base FDT lives in vendor_boot; keep it and DTBO in the same
+        # recipient cohort, including when Android is running from slot B.
+        PARTS="$PARTS dtbo vendor_boot" ;;
     *) [ "$(getprop ro.boot.verifiedbootstate)" = orange ] || fail 'unlocked bootloader required' ;;
 esac
 for part in misc boot_a boot_b l_agdsp_$src; do [ -b "$BY/$part" ] || fail "missing block device: $part"; done

@@ -1,0 +1,34 @@
+{
+  "profile": "y60",
+  "status": "experimental kernel cohort; userspace and complete test-package integration added",
+  "kernel_release": "6.18.54-y60-bringup1",
+  "hardware_validated": false,
+  "kernel_directory": "{workspace}/kernels/y60",
+  "build_log": "out/build-logs/20261031-170011-y60-kernel-final-38848/command.log",
+  "sha256": {
+    "Image": "592143de5f5dca10d1a7c72474f13ab64d2ba9cf06a38d4884d66d228f8f0f1e",
+    "Image.lk": "7f554cd9fdf3443ce86c53596a81cbc4febe5fc974fceed2a675ddbf97c54353",
+    "config": "27b45e73b79d36c7099cacb5140ba7187c0d91acc0ff8cc73242d2edaacc139f",
+    "modules.tar": "7deda113fe7f12f54f2678ece0ad77e0858a05983ad423562c45627f7d45d4d9",
+    "System.map": "3570e622dc823ad3702d25eb3f3f5178f15172a7538bd440d6923602e47a2ca5"
+  },
+  "module_count": 235,
+  "all_module_releases_verified": true,
+  "source_sha256": {
+    "eta6937-charger.c": "85f49f7a799e213eafadc39d0363cbff879dd795fe1f8bfc92a16b2257dabd8b",
+    "charger.py": "d0e9c3c6b09d6cfa53a9e9b9d153f79a3da618d1ee656b2f49c31693a24b8f51",
+    "touch.py": "2796745af551b50bc7ae9d410aba508813188328ccb9e2299c4db4f680c72095",
+    "prepare-kernel.py": "1d2b6d6c720b54d8ce7d101d69d04ad25f96f4cdd14dcdced3caa8f0e4ed6d07",
+    "kernel.config": "783145e91f9d13ddd1cd6b5e70dcfcbad058c3bffbcc6ca7b3fd768fc392f655",
+    "module-order.txt": "48e77076a53e504dbad13e60f0db6b733e20dedbd929b9344d9f2e9f12df2713"
+  },
+  "checks": {
+    "board_and_artifact_tests": 20,
+    "shared_cpu_backend_tests": 31,
+    "build_orchestration_tests": 15,
+    "actual_overlay_isolation_test": "passed",
+    "eta_actual_callbacks": "passed with mocked hardware and work queues",
+    "userspace_and_firmware_tests": 5,
+    "bootchain_slot_tests": 5
+  }
+}

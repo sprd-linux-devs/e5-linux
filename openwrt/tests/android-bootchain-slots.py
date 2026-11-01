@@ -11,11 +11,12 @@ TOP = Path(__file__).resolve().parents[2]
 
 
 class Chain(unittest.TestCase):
-    def exercise(self, android, fault=False, bad_crc=False):
+    def exercise(self, android, fault=False, bad_crc=False, y60=False):
         linux = 'b' if android == 'a' else 'a'
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); by = root/'by'; by.mkdir(); stubs = root/'bin'; stubs.mkdir()
             parts = ['uboot','sml','teecfg','trustos','vbmeta']
+            if y60: parts += ['dtbo','vendor_boot']
             for part in parts+['boot','l_agdsp']:
                 for slot in ('a','b'): (by/(part+'_'+slot)).write_bytes((part+slot).encode()*128)
             (by/'userdata').write_bytes(b'ANDROID DATA')
@@ -32,7 +33,8 @@ class Chain(unittest.TestCase):
             text = text.replace('settle() { sync && blockdev --flushbufs "$1"; }','settle() { :; }')
             text = text.replace('\nsync || fail', '\n: || fail')
             script = root/'chain.sh'; script.write_text(text)
-            (stubs/'getprop').write_text('#!/bin/sh\ncase "$1" in ro.boot.slot_suffix) echo _'+android+';; ro.product.model) echo E5;; ro.boot.verifiedbootstate) echo orange;; esac\n')
+            model = 'CP23NV3' if y60 else 'E5'
+            (stubs/'getprop').write_text('#!/bin/sh\ncase "$1" in ro.boot.slot_suffix) echo _'+android+';; ro.product.model|ro.product.device) echo '+model+';; ro.boot.verifiedbootstate) echo orange;; esac\n')
             (stubs/'id').write_text('#!/bin/sh\necho 0\n')
             if fault:
                 (stubs/'dd').write_text('#!/bin/sh\ncase " $* " in *" of='+str(by/('trustos_'+linux))+' "*)\n'
@@ -67,6 +69,14 @@ class Chain(unittest.TestCase):
     def test_bad_crc_stops_before_backups_or_writes(self):
         for slot in ('a','b'):
             with self.subTest(slot=slot): self.exercise(slot,bad_crc=True)
+
+    def test_y60_base_fdt_and_overlays_follow_android_in_either_slot(self):
+        for slot in ('a', 'b'):
+            with self.subTest(slot=slot): self.exercise(slot, y60=True)
+
+    def test_y60_sync_failure_restores_its_whole_cohort(self):
+        for slot in ('a', 'b'):
+            with self.subTest(slot=slot): self.exercise(slot, y60=True, fault=True)
 
 
 if __name__ == '__main__': unittest.main()

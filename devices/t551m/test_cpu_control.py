@@ -435,6 +435,17 @@ class VoltageFirmwareTest(unittest.TestCase):
         cache.unlink()
         self.assertFalse(self.check_hashes([digest, 'unknown']))
 
+    def test_y60_both_stock_versions_require_matching_slots_and_ums9620(self):
+        first='7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9'
+        second='355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b'
+        self.assertFalse(self.check_hashes([first,first]))
+        self.compatible.write_bytes(b'sprd,ums9620\0')
+        cache=self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE
+        for pair,allowed in (([first,first],True),([second,second],True),
+                             ([first,second],False),([first,'unknown'],False)):
+            cache.unlink(missing_ok=True)
+            self.assertEqual(self.check_hashes(pair),allowed)
+
 
 if __name__=='__main__':
     unittest.main()

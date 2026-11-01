@@ -1,0 +1,557 @@
+{
+  "hardware_validated": false,
+  "drivers": {
+    "eta6937-charger.ko": {
+      "sha256": [
+        "3ec09461206dafe302a276e5bf27cd50dc475e47c6edb76104dd819502dac3d2",
+        "0cd4bf317a3917de3547be6dd78e0b595ff78107e42465014edd43faa0dd054d"
+      ],
+      "symbols": {
+        "eta6937_charger_probe": {
+          "first": {
+            "bytes": 2648,
+            "code_sha256": "e40a6de6ab4941cd88d9cc1a636194ed0606f31e02d5f4eab57605d026183847",
+            "relocation_sha256": "78080f2d2a7dbe1fdfa3f8cbba065d530bf184057d3b8f5980791cfe2cf49753",
+            "external_calls": [
+              "__cfi_slowpath",
+              "__mutex_init",
+              "__stack_chk_fail",
+              "_dev_err",
+              "_dev_warn",
+              "alarm_init",
+              "dev_get_regmap",
+              "device_init_wakeup",
+              "devm_gpiod_get",
+              "devm_kmalloc",
+              "devm_power_supply_register",
+              "devm_regulator_register",
+              "gpiod_set_value_cansleep",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "init_timer_key",
+              "memset",
+              "of_device_is_compatible",
+              "of_find_compatible_node",
+              "of_find_device_by_node",
+              "of_property_read_u32_index",
+              "regmap_update_bits_base",
+              "sprd_battery_get_battery_info",
+              "sprd_battery_put_battery_info"
+            ]
+          },
+          "second": {
+            "bytes": 2648,
+            "code_sha256": "e40a6de6ab4941cd88d9cc1a636194ed0606f31e02d5f4eab57605d026183847",
+            "relocation_sha256": "78080f2d2a7dbe1fdfa3f8cbba065d530bf184057d3b8f5980791cfe2cf49753",
+            "external_calls": [
+              "__cfi_slowpath",
+              "__mutex_init",
+              "__stack_chk_fail",
+              "_dev_err",
+              "_dev_warn",
+              "alarm_init",
+              "dev_get_regmap",
+              "device_init_wakeup",
+              "devm_gpiod_get",
+              "devm_kmalloc",
+              "devm_power_supply_register",
+              "devm_regulator_register",
+              "gpiod_set_value_cansleep",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "init_timer_key",
+              "memset",
+              "of_device_is_compatible",
+              "of_find_compatible_node",
+              "of_find_device_by_node",
+              "of_property_read_u32_index",
+              "regmap_update_bits_base",
+              "sprd_battery_get_battery_info",
+              "sprd_battery_put_battery_info"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_usb_set_property": {
+          "first": {
+            "bytes": 1192,
+            "code_sha256": "0690e6ca7fb088f1a165696bf540fcdfe5aade280fcfff217a9ca764661fddbb",
+            "relocation_sha256": "e44bf94a5e622dc09012a5cfd6cbd2dbbe0a17e47e63f4fbd2df945705db610e",
+            "external_calls": [
+              "_dev_err",
+              "cancel_delayed_work_sync",
+              "gpiod_set_value_cansleep",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "mutex_lock",
+              "mutex_unlock",
+              "power_supply_get_drvdata",
+              "printk",
+              "queue_delayed_work_on",
+              "regmap_update_bits_base"
+            ]
+          },
+          "second": {
+            "bytes": 1192,
+            "code_sha256": "0690e6ca7fb088f1a165696bf540fcdfe5aade280fcfff217a9ca764661fddbb",
+            "relocation_sha256": "e44bf94a5e622dc09012a5cfd6cbd2dbbe0a17e47e63f4fbd2df945705db610e",
+            "external_calls": [
+              "_dev_err",
+              "cancel_delayed_work_sync",
+              "gpiod_set_value_cansleep",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "mutex_lock",
+              "mutex_unlock",
+              "power_supply_get_drvdata",
+              "printk",
+              "queue_delayed_work_on",
+              "regmap_update_bits_base"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_usb_get_property": {
+          "first": {
+            "bytes": 460,
+            "code_sha256": "9f63c1de9330322df0b198e20944baec033bbdefbd136470f1a1b8751aae3fa7",
+            "relocation_sha256": "965878c1248244d6e448fbece565e37e76025c7cc1391429ee0ac9401796f6ad",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "mutex_lock",
+              "mutex_unlock",
+              "power_supply_get_drvdata",
+              "printk"
+            ]
+          },
+          "second": {
+            "bytes": 460,
+            "code_sha256": "9f63c1de9330322df0b198e20944baec033bbdefbd136470f1a1b8751aae3fa7",
+            "relocation_sha256": "965878c1248244d6e448fbece565e37e76025c7cc1391429ee0ac9401796f6ad",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "mutex_lock",
+              "mutex_unlock",
+              "power_supply_get_drvdata",
+              "printk"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_enable_otg": {
+          "first": {
+            "bytes": 312,
+            "code_sha256": "9b8ce986fc604fa4c4df6649655c0b8c2cc7646ed28661e0e9d5fcf0ba50bfae",
+            "relocation_sha256": "f906f4f4cea50d03e188a4beb0eabbac818338bc6ce913a6f3bc8bd096c60dc4",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk",
+              "queue_delayed_work_on",
+              "rdev_get_drvdata",
+              "regmap_update_bits_base"
+            ]
+          },
+          "second": {
+            "bytes": 312,
+            "code_sha256": "9b8ce986fc604fa4c4df6649655c0b8c2cc7646ed28661e0e9d5fcf0ba50bfae",
+            "relocation_sha256": "f906f4f4cea50d03e188a4beb0eabbac818338bc6ce913a6f3bc8bd096c60dc4",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk",
+              "queue_delayed_work_on",
+              "rdev_get_drvdata",
+              "regmap_update_bits_base"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_disable_otg": {
+          "first": {
+            "bytes": 212,
+            "code_sha256": "31d370d0f6ab48f66bd2b4b057b27dc66eb224a125c68e0a2e8778b605439572",
+            "relocation_sha256": "79ffba034f7c6f31b781de64af61253d420650f1bd12960a00bf0c3f1dcd364e",
+            "external_calls": [
+              "_dev_err",
+              "cancel_delayed_work_sync",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk",
+              "rdev_get_drvdata",
+              "regmap_update_bits_base"
+            ]
+          },
+          "second": {
+            "bytes": 212,
+            "code_sha256": "31d370d0f6ab48f66bd2b4b057b27dc66eb224a125c68e0a2e8778b605439572",
+            "relocation_sha256": "79ffba034f7c6f31b781de64af61253d420650f1bd12960a00bf0c3f1dcd364e",
+            "external_calls": [
+              "_dev_err",
+              "cancel_delayed_work_sync",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk",
+              "rdev_get_drvdata",
+              "regmap_update_bits_base"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_otg_work": {
+          "first": {
+            "bytes": 148,
+            "code_sha256": "30c7656e45d6e457eac3d7af83c43524f642b1e829c1a75d3a8a2e0cd08a9a83",
+            "relocation_sha256": "17413817df1fa581020a46b358e2a06e733903fe2c8e02d5945a208995f2ecb6",
+            "external_calls": [
+              "_dev_err",
+              "extcon_get_state",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "queue_delayed_work_on"
+            ]
+          },
+          "second": {
+            "bytes": 148,
+            "code_sha256": "30c7656e45d6e457eac3d7af83c43524f642b1e829c1a75d3a8a2e0cd08a9a83",
+            "relocation_sha256": "17413817df1fa581020a46b358e2a06e733903fe2c8e02d5945a208995f2ecb6",
+            "external_calls": [
+              "_dev_err",
+              "extcon_get_state",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "queue_delayed_work_on"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_charger_feed_watchdog_work": {
+          "first": {
+            "bytes": 116,
+            "code_sha256": "c5ae69b5494fa44142130e12a049498da9d979dcc227d206f341f74f7a713f2a",
+            "relocation_sha256": "8fcd5f72ebfd1879ea7fa837945d6405ec72f4295bf4f3b3274d1684ff947106",
+            "external_calls": [
+              ".text",
+              "printk",
+              "queue_delayed_work_on"
+            ]
+          },
+          "second": {
+            "bytes": 116,
+            "code_sha256": "c5ae69b5494fa44142130e12a049498da9d979dcc227d206f341f74f7a713f2a",
+            "relocation_sha256": "8fcd5f72ebfd1879ea7fa837945d6405ec72f4295bf4f3b3274d1684ff947106",
+            "external_calls": [
+              ".text",
+              "printk",
+              "queue_delayed_work_on"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "eta6937_iin_lim2_tbl": {
+          "first": {
+            "bytes": 32,
+            "code_sha256": "03948adca630a6705813e14605b37e4b05b53c271dd3c619abac8c688947fa79",
+            "relocation_sha256": "43e5f7a1a6b6e8856ad129d7b727dc59b1648e68eb2d7e1e271fbc520d48adf2",
+            "external_calls": []
+          },
+          "second": {
+            "bytes": 32,
+            "code_sha256": "03948adca630a6705813e14605b37e4b05b53c271dd3c619abac8c688947fa79",
+            "relocation_sha256": "43e5f7a1a6b6e8856ad129d7b727dc59b1648e68eb2d7e1e271fbc520d48adf2",
+            "external_calls": []
+          },
+          "code_and_relocations_equal": true,
+          "first_microamps": [
+            300000,
+            500000,
+            800000,
+            1200000,
+            1500000,
+            2000000,
+            3000000,
+            5000000
+          ],
+          "second_microamps": [
+            300000,
+            500000,
+            800000,
+            1200000,
+            1500000,
+            2000000,
+            3000000,
+            5000000
+          ]
+        },
+        "eta6937_charger_feed_watchdog": {
+          "first": {
+            "bytes": 660,
+            "code_sha256": "833233510d08f4bed33b91ec7cbdbdc7622fd58d76deac1d21f54a0f6b03197f",
+            "relocation_sha256": "c043129bd4658e692236125aa168310738c48c6d5b4f61b97a761e46ed03f3f0",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk"
+            ]
+          },
+          "second": {
+            "bytes": 660,
+            "code_sha256": "833233510d08f4bed33b91ec7cbdbdc7622fd58d76deac1d21f54a0f6b03197f",
+            "relocation_sha256": "c043129bd4658e692236125aa168310738c48c6d5b4f61b97a761e46ed03f3f0",
+            "external_calls": [
+              "_dev_err",
+              "i2c_smbus_read_byte_data",
+              "i2c_smbus_write_byte_data",
+              "printk"
+            ]
+          },
+          "code_and_relocations_equal": true
+        }
+      }
+    },
+    "tlsc6540.ko": {
+      "sha256": [
+        "8b440d69f6d59f4dc024f1135a4d20f1c758230af37f703d9cea537bfdec0bbf",
+        "fbfa2186c82170c5790f67862a0c948cc89b720ce7d915ecabca6b778a27f0b8"
+      ],
+      "symbols": {
+        "touch_event_thread_handler": {
+          "first": {
+            "bytes": 1236,
+            "code_sha256": "ad5bedabee11465bb1d92549c01482973fa718a7f5a3e7b0d52042b3413f3081",
+            "relocation_sha256": "72ed5bad96a9936e13dd9b70bed39f65dcb4ca48b17ad1b04a25dd3063883114",
+            "external_calls": [
+              "__pm_stay_awake",
+              "__stack_chk_fail",
+              "input_event",
+              "input_mt_report_slot_state",
+              "mutex_lock",
+              "mutex_unlock",
+              "printk",
+              "tlsc6x_i2c_read_sub",
+              "tlsc6x_i2c_write",
+              "tssc_get_debug_info"
+            ]
+          },
+          "second": {
+            "bytes": 1236,
+            "code_sha256": "ad5bedabee11465bb1d92549c01482973fa718a7f5a3e7b0d52042b3413f3081",
+            "relocation_sha256": "72ed5bad96a9936e13dd9b70bed39f65dcb4ca48b17ad1b04a25dd3063883114",
+            "external_calls": [
+              "__pm_stay_awake",
+              "__stack_chk_fail",
+              "input_event",
+              "input_mt_report_slot_state",
+              "mutex_lock",
+              "mutex_unlock",
+              "printk",
+              "tlsc6x_i2c_read_sub",
+              "tlsc6x_i2c_write",
+              "tssc_get_debug_info"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "tlsc6x_tp_reset_active": {
+          "first": {
+            "bytes": 132,
+            "code_sha256": "640cfb176f726962fce4c72a17ae3b3192abf72206aca60f3080ade530034e4c",
+            "relocation_sha256": "e67c74f604ae8df5dac9d005cf405c24a8e0cabbc5827ad3bd101d69535f920f",
+            "external_calls": [
+              "gpio_to_desc",
+              "gpiod_direction_output_raw",
+              "gpiod_set_raw_value",
+              "msleep",
+              "printk"
+            ]
+          },
+          "second": {
+            "bytes": 132,
+            "code_sha256": "640cfb176f726962fce4c72a17ae3b3192abf72206aca60f3080ade530034e4c",
+            "relocation_sha256": "e67c74f604ae8df5dac9d005cf405c24a8e0cabbc5827ad3bd101d69535f920f",
+            "external_calls": [
+              "gpio_to_desc",
+              "gpiod_direction_output_raw",
+              "gpiod_set_raw_value",
+              "msleep",
+              "printk"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "tlsc6x_tpd_reset_force": {
+          "first": {
+            "bytes": 728,
+            "code_sha256": "77d83e15ba7d76efa2322af4985400d233bc1d9d4312d9b31a9fea36ef90a922",
+            "relocation_sha256": "697272f2baf87cca93124b597f2a745dd73fb906d2bbad3e948920f179bdfb86",
+            "external_calls": [
+              "__const_udelay",
+              "gpio_to_desc",
+              "gpiod_direction_output_raw",
+              "gpiod_set_raw_value",
+              "printk",
+              "usleep_range"
+            ]
+          },
+          "second": {
+            "bytes": 728,
+            "code_sha256": "77d83e15ba7d76efa2322af4985400d233bc1d9d4312d9b31a9fea36ef90a922",
+            "relocation_sha256": "697272f2baf87cca93124b597f2a745dd73fb906d2bbad3e948920f179bdfb86",
+            "external_calls": [
+              "__const_udelay",
+              "gpio_to_desc",
+              "gpiod_direction_output_raw",
+              "gpiod_set_raw_value",
+              "printk",
+              "usleep_range"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "tlsc6x_probe": {
+          "first": {
+            "bytes": 2948,
+            "code_sha256": "38e70f05644de9c3be7e9d0eec344332707fdee80d266d3efd5629689edc63af",
+            "relocation_sha256": "af8545f0b63fcdb69995dc5c1938f42d29eddb19a41a04c4330f749e9f13ac4e",
+            "external_calls": [
+              "__cfi_slowpath",
+              "__class_create",
+              "__stack_chk_fail",
+              "_dev_err",
+              "_dev_info",
+              "alloc_workqueue",
+              "device_create",
+              "device_create_file",
+              "gpio_free",
+              "gpio_request",
+              "gpio_to_desc",
+              "gpiod_direction_input",
+              "gpiod_direction_output_raw",
+              "gpiod_to_irq",
+              "hrtimer_init",
+              "hrtimer_start_range_ns",
+              "input_allocate_device",
+              "input_free_device",
+              "input_mt_init_slots",
+              "input_register_device",
+              "input_set_abs_params",
+              "input_set_capability",
+              "input_unregister_device",
+              "kfree",
+              "kmem_cache_alloc_trace",
+              "kobject_create_and_add",
+              "kthread_create_on_node",
+              "misc_register",
+              "mutex_lock",
+              "mutex_unlock",
+              "of_get_named_gpio_flags",
+              "of_property_read_variable_u32_array",
+              "printk",
+              "proc_create",
+              "request_threaded_irq",
+              "sysfs_create_group",
+              "sysfs_create_link",
+              "tlsc6x_i2c_read_sub",
+              "tlsc6x_tp_dect",
+              "tlsc6x_tpd_reset_force",
+              "wake_up_process"
+            ]
+          },
+          "second": {
+            "bytes": 2948,
+            "code_sha256": "38e70f05644de9c3be7e9d0eec344332707fdee80d266d3efd5629689edc63af",
+            "relocation_sha256": "af8545f0b63fcdb69995dc5c1938f42d29eddb19a41a04c4330f749e9f13ac4e",
+            "external_calls": [
+              "__cfi_slowpath",
+              "__class_create",
+              "__stack_chk_fail",
+              "_dev_err",
+              "_dev_info",
+              "alloc_workqueue",
+              "device_create",
+              "device_create_file",
+              "gpio_free",
+              "gpio_request",
+              "gpio_to_desc",
+              "gpiod_direction_input",
+              "gpiod_direction_output_raw",
+              "gpiod_to_irq",
+              "hrtimer_init",
+              "hrtimer_start_range_ns",
+              "input_allocate_device",
+              "input_free_device",
+              "input_mt_init_slots",
+              "input_register_device",
+              "input_set_abs_params",
+              "input_set_capability",
+              "input_unregister_device",
+              "kfree",
+              "kmem_cache_alloc_trace",
+              "kobject_create_and_add",
+              "kthread_create_on_node",
+              "misc_register",
+              "mutex_lock",
+              "mutex_unlock",
+              "of_get_named_gpio_flags",
+              "of_property_read_variable_u32_array",
+              "printk",
+              "proc_create",
+              "request_threaded_irq",
+              "sysfs_create_group",
+              "sysfs_create_link",
+              "tlsc6x_i2c_read_sub",
+              "tlsc6x_tp_dect",
+              "tlsc6x_tpd_reset_force",
+              "wake_up_process"
+            ]
+          },
+          "code_and_relocations_equal": true
+        },
+        "tlsc6x_resume_work": {
+          "first": {
+            "bytes": 576,
+            "code_sha256": "ba11f38e0e1e88b10e80965a6f256eecf04ceaa4de6bdac1cca8e55d5bc59bbc",
+            "relocation_sha256": "bb1f7d4c789a55971b967cb665191d481c2bad0cb6fb7872865ecffc9de4dbb8",
+            "external_calls": [
+              ".text",
+              "__stack_chk_fail",
+              "enable_irq",
+              "input_event",
+              "input_mt_report_slot_state",
+              "mutex_lock",
+              "mutex_unlock",
+              "printk",
+              "tlsc6x_i2c_write",
+              "tlsc6x_set_dd_mode_sub",
+              "tlsc6x_tpd_reset_force"
+            ]
+          },
+          "second": {
+            "bytes": 576,
+            "code_sha256": "ba11f38e0e1e88b10e80965a6f256eecf04ceaa4de6bdac1cca8e55d5bc59bbc",
+            "relocation_sha256": "bb1f7d4c789a55971b967cb665191d481c2bad0cb6fb7872865ecffc9de4dbb8",
+            "external_calls": [
+              ".text",
+              "__stack_chk_fail",
+              "enable_irq",
+              "input_event",
+              "input_mt_report_slot_state",
+              "mutex_lock",
+              "mutex_unlock",
+              "printk",
+              "tlsc6x_i2c_write",
+              "tlsc6x_set_dd_mode_sub",
+              "tlsc6x_tpd_reset_force"
+            ]
+          },
+          "code_and_relocations_equal": true
+        }
+      }
+    }
+  }
+}

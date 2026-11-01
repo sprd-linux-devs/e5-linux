@@ -72,14 +72,15 @@ class Charger(unittest.TestCase):
         self.assertNotIn('chip_rev', source)
         self.assertIn('clamp_val(vol, 3856, 4380)', source)
 
-    def test_real_41s_chain_keeps_its_0x1a_gate(self):
+    def test_real_41s_chain_identifies_its_stock_addresses(self):
         adapter = runpy.run_path(str(HERE.parent / 'yuanhang41s/charger.py'))['apply']
         def chain(root):
             prepare(root, 'yuanhang41s')
             adapter(root)
         source = generated(chain)
         self.assertIn('client->addr = 0x1a;', source)
-        self.assertIn('if ((val >> 3) != 0 || client->addr != 0x1a)', source)
+        self.assertIn('original_addr != 0x6b && original_addr != 0x1a', source)
+        self.assertIn('ret < 0 || (val >> 3) != 0', source)
         self.assertIn('"41S-SGM41513"', source)
         self.assertNotIn('chip_rev', source)
         self.assertNotIn('val != 0x11 && val != 0x12', source)
@@ -93,6 +94,66 @@ class Charger(unittest.TestCase):
                      'get_termina_vol', 'set_termina_vol', 'set_vindpm'):
             full = 'bq2560x_charger_' + name
             self.assertEqual(function(new, full), function(old, full), name)
+
+    @unittest.skipIf(os.name == 'nt', 'Native POSIX C compiler required')
+    def test_41s_stock_address_selection_and_no_writes_on_unknown_chip(self):
+        adapter = runpy.run_path(str(HERE.parent / 'yuanhang41s/charger.py'))['apply']
+        def chain(root):
+            prepare(root, 'yuanhang41s')
+            adapter(root)
+            before = (root/'drivers/power/supply/bq2560x-charger.c').read_bytes()
+            adapter(root)
+            self.assertEqual(before, (root/'drivers/power/supply/bq2560x-charger.c').read_bytes())
+        source = generated(chain)
+        start = source.index('\t/* 41S stock address selection;')
+        identity = source[start:source.index('\n\ti2c_set_clientdata(client, info);', start)]
+        compile_run(r'''
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
+typedef unsigned short u16;
+#define BQ2560X_REG_B 11
+struct i2c_client { u16 addr; } client;
+struct device { int unused; } test_dev;
+struct bq2560x_charger_info { struct i2c_client *client; char charge_ic_vendor_name[32]; } test_info={&client,{0}};
+static int errors[2],ids[2],calls[2];
+static int bq2560x_read(struct bq2560x_charger_info *i,int reg,unsigned char *val){
+ assert(i==&test_info&&reg==11);int n=i->client->addr==0x1a;
+ assert(i->client->addr==0x6b||n);calls[n]++;*val=ids[n];return errors[n];
+}
+static int dev_err_probe(struct device *d,int error,const char *s,...){(void)d;(void)s;return error;}
+#define strscpy(d,s,n) ((void)(n),strcpy(d,s))
+static int identify(void){
+ struct bq2560x_charger_info *info=&test_info;
+ struct i2c_client *client=info->client;struct device *dev=&test_dev;
+ unsigned char val=0;int ret;
+''' + identity + r'''
+ return 0;
+}
+static void reset(void){memset(errors,0,sizeof(errors));memset(ids,0,sizeof(ids));memset(calls,0,sizeof(calls));client.addr=0x6b;}
+int main(void){
+ for(int raw=0;raw<256;raw++){
+  reset();ids[0]=raw;
+  assert(identify()==(raw<8?0:-ENODEV));
+  assert(client.addr==0x6b&&calls[0]==1&&!calls[1]);
+ }
+ for(int nack=0;nack<2;nack++){
+  reset();errors[0]=nack?-EREMOTEIO:-ENXIO;
+  assert(identify()==0&&client.addr==0x1a&&calls[0]==1&&calls[1]==1);
+  calls[0]=calls[1]=0;
+  assert(identify()==0&&!calls[0]&&calls[1]==1);
+ }
+ reset();errors[0]=-EIO;
+ assert(identify()==-EIO&&client.addr==0x6b&&!calls[1]);
+ reset();errors[0]=-ENXIO;errors[1]=-ETIMEDOUT;
+ assert(identify()==-ETIMEDOUT&&client.addr==0x6b);
+ reset();errors[0]=-ENXIO;ids[1]=0x14;
+ assert(identify()==-ENODEV&&client.addr==0x6b);
+ reset();client.addr=0x60;
+ assert(identify()==-ENODEV&&!calls[0]&&!calls[1]);
+ return 0;
+}
+''')
 
     @unittest.skipIf(os.name == 'nt', 'Native POSIX C compiler required')
     def test_actual_revision_setters_and_getters(self):

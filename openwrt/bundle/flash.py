@@ -229,7 +229,7 @@ def package_profile():
         return None  # Legacy E5 packages did not carry a profile manifest.
     with open(path, encoding='utf-8') as stream:
         value = json.load(stream)
-    if value.get('profile') not in ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60') or not value.get('android_models'):
+    if value.get('profile') not in ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60', 'y60') or not value.get('android_models'):
         die('invalid package device profile')
     if value['profile'] == 'k1' and value['android_models'] != ['angelcare K1']:
         die('K1 package model identity differs')
@@ -240,7 +240,7 @@ def package_profile():
 
 def default_hotspot_name():
     profile = package_profile()
-    model = {'e5': 'E5', 't551m': 'T551M', 'm8': 'M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang41S', 'k1': 'K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing60'}[
+    model = {'e5': 'E5', 't551m': 'T551M', 'm8': 'M8', 't512n': 'T512N', 'yuanhang41s': 'Yuanhang41S', 'k1': 'K1', 'lym10k': 'LYM-10K', 'changxing60': 'Changxing60', 'y60': 'Y60'}[
         profile['profile'] if profile else 'e5']
     return model + '-OpenWrt'
 
@@ -564,7 +564,7 @@ def android_checks():
             GUI.confirm_device_model(profile, model, board)
         else:
             expected_board = {'changxing60': 'P720S20', 'k1': 'ums9157_2h10',
-                              'yuanhang41s': 'P720S11', 'lym10k': 'RY5G'}.get(profile['profile'])
+                              'yuanhang41s': 'P720S11', 'lym10k': 'RY5G', 'y60': 'CP23NV3'}.get(profile['profile'])
             if (model not in profile['android_models'] or
                     expected_board and board != expected_board):
                 print('Model mismatch / 机型不匹配: package / 安装包 = ' + profile['profile'] +
@@ -596,6 +596,7 @@ def pull_device_files(work, out=None):
     su(f'rm -rf {st}; mkdir -p {st}')
     board = (package_profile() or {}).get('profile') == 'yuanhang41s'
     changxing = (package_profile() or {}).get('profile') == 'changxing60'
+    y60 = (package_profile() or {}).get('profile') == 'y60'
     pskey = 'bt_configure_pskey.ini' if board else 'bt_configure_pskey.xpe.ini'
     rf = 'bt_configure_rf.ini' if board else 'bt_configure_rf.xpe.ini'
     amplifier = 'aw883xx_acf.bin' if board else 'aw87xxx_acf.bin'
@@ -611,6 +612,8 @@ def pull_device_files(work, out=None):
                    '/odm/etc/audio_params/sprd/audio_pga.xml']
     if changxing:
         wanted += ['/odm/etc/audio_config.xml', '/odm/etc/audio_route.xml', '/odm/etc/audio_params/sprd/audio_pga.xml', '/vendor/firmware/axs_firmware_easyquick.bin']
+    if y60:
+        wanted += ['/odm/etc/audio_route.xml', '/odm/etc/audio_params/sprd/audio_pga.xml']
     wanted += ['/odm/firmware/' + n for n in su('ls /odm/firmware/').split()
                if n.startswith('wifi_board_config') and n.endswith('.ini')]
     for p in wanted:
@@ -631,6 +634,8 @@ def pull_device_files(work, out=None):
         need += [amplifier,'sitronix_firmware_huaying.dump','audio_route.xml','audio_pga.xml']
     if changxing:
         need += ['audio_config.xml','audio_route.xml','audio_pga.xml','axs_firmware_easyquick.bin',amplifier,'codec.xml']
+    if y60:
+        need += ['audio_route.xml', 'audio_pga.xml', amplifier, 'codec.xml']
     for n in need:
         if not os.path.isfile(os.path.join(raw, n)):
             die(f'this device has no {n}: not an E5, or a different firmware')
@@ -652,6 +657,9 @@ def pull_device_files(work, out=None):
             shutil.copyfile(Path(raw)/name, Path(fw)/('changxing60-'+name))
         target = Path(fw)/'axs15205'; target.mkdir()
         shutil.copyfile(Path(raw)/'axs_firmware_easyquick.bin', target/'easyquick.bin')
+    if y60:
+        for name in ('audio_route.xml', 'audio_pga.xml'):
+            shutil.copyfile(Path(raw)/name, Path(fw)/('y60-'+name))
     tools = os.path.join(SCRIPTS, 'tools')
     bt = (os.path.join(tools, 'sprd-bt-config.py'), os.path.join(raw, pskey),
           os.path.join(raw, rf), os.path.join(raw, 'btmac.txt'), os.path.join(fw, 'sprd'))

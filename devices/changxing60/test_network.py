@@ -17,6 +17,7 @@ class Network(unittest.TestCase):
             self.assertIn(setting, text)
         self.assertIn("network.lan.ipaddr='192.168.9.1/24'", text)
         self.assertNotIn('192.168.92.', text)
+        self.assertIn("set network.wan.init_epsbearer='keep'", text)
         self.assertIn("dhcp.usb_host.mac='02:50:00:00:60:02'", text)
         self.assertIn("dhcp.usb_host.tag='cx60probe'", text)
         self.assertIn("dhcp.cx60probe.dhcp_option='3'", text)

@@ -1,0 +1,470 @@
+{
+  "model": "CP23NV3",
+  "platform": "ums9620",
+  "hardware_validated": false,
+  "release_ready": false,
+  "firmwares": [
+    {
+      "build": "CP21.20240108.0S.GCY",
+      "kernel": "5.4.210-android12-9-g164a906d75ab",
+      "hashes": {
+        "boot_a.img": "8a884f8e7a06a6807b36ad348bb6209a4962db7afabf5e541d57fc88999a43cb",
+        "boot_b.img": "8a884f8e7a06a6807b36ad348bb6209a4962db7afabf5e541d57fc88999a43cb",
+        "vendor_boot_a.img": "d00a2d6f09a1c67d0d9ed193faf0088c718ef64c0bdb087e0c8bc7bf8a1c98b6",
+        "vendor_boot_b.img": "d00a2d6f09a1c67d0d9ed193faf0088c718ef64c0bdb087e0c8bc7bf8a1c98b6",
+        "dtb_a.img": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+        "dtb_b.img": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+        "dtbo_a.img": "e1f71497b9bd09f496bace3d5ac3dd525d6ebc425cea594582dea2f45711f47f",
+        "dtbo_b.img": "e1f71497b9bd09f496bace3d5ac3dd525d6ebc425cea594582dea2f45711f47f",
+        "sml_a.img": "7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9",
+        "sml_b.img": "7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9"
+      },
+      "base_fdt_sha256": "d311506132acfd784dfb4056d1d1d370d084faa6c8732365d83d525ab5a8f6b8",
+      "dtbo_5_sha256": "42685c83976808dd6266179bc17b170ccd7d434c743a9ae137d123d85b91961a",
+      "selected_stock_files": {
+        "vendor_a/build.prop": {
+          "bytes": 15968,
+          "sha256": "cec1aab49d491599cc9aef2915afff33a62f8b7c48467f3c4ddece9f5e307571"
+        },
+        "vendor_a/etc/audio_config.xml": {
+          "bytes": 4463,
+          "sha256": "c2739fc247059b00203de11dc9cef03c4df2bacbd798e6a55827d924020cae56"
+        },
+        "vendor_a/etc/audio_effects.xml": {
+          "bytes": 6129,
+          "sha256": "16382c81bbbccdce3f49fae1ffea68223b82d63dd265aaed0689b75404fe6787"
+        },
+        "vendor_a/etc/audio_policy_apm_configuration_configurable.xml": {
+          "bytes": 1730,
+          "sha256": "de9da9f5ed4456edc40f8710c0d8e4477dc73e16af609f50033342a9239a8938"
+        },
+        "vendor_a/etc/audio_policy_configuration.xml": {
+          "bytes": 1761,
+          "sha256": "2404e9fabd99129b79ad88cef0d5fee188ce690a6d95b2e6fa1a7004114b78b6"
+        },
+        "vendor_a/etc/audio_policy_configuration_a2dp_offload_disabled.xml": {
+          "bytes": 1682,
+          "sha256": "87def7df3be39499e0ddaf1b4d808f5b028410c11cb039afa90c8f5479910092"
+        },
+        "vendor_a/etc/audio_policy_configuration_bluetooth_legacy_hal.xml": {
+          "bytes": 1691,
+          "sha256": "f251524a2f194365fd3e442f2fa6314fcbfd464051e83df2f066ff4a2d870cd0"
+        },
+        "vendor_a/etc/audio_policy_engine_configuration.xml": {
+          "bytes": 1118,
+          "sha256": "e3c4ba99e3e023ab99dd44409973c7dd2a11c57653c4d151540ea381617aba48"
+        },
+        "vendor_a/etc/audio_policy_engine_criterion_types.xml": {
+          "bytes": 8796,
+          "sha256": "06bf810d444c7844cf9aec55dcc8acc3056e594a9ee4b1f5ddf05bd62460cf43"
+        },
+        "vendor_a/etc/audio_policy_engine_default_stream_volumes.xml": {
+          "bytes": 5400,
+          "sha256": "9d100b9a2553aa775c94333dbe076a6c3b2150f3f3d33cf6df3d80514fbc220a"
+        },
+        "vendor_a/etc/audio_policy_engine_product_strategies.xml": {
+          "bytes": 4583,
+          "sha256": "a86433aec2f521c9614a251e44e740993b5098aadbf5b2efe5647bfde9bc4907"
+        },
+        "vendor_a/etc/audio_policy_engine_stream_volumes.xml": {
+          "bytes": 10569,
+          "sha256": "38897dde39c6b9754ff1c80d93004500e8332043ceb860bde7cfa18e376334f9"
+        },
+        "vendor_a/etc/audio_policy_volumes.xml": {
+          "bytes": 10439,
+          "sha256": "2dac8b16c0841fdaafe1e6d0986a5035c4fe2c66e6178eabe24f2711900b0630"
+        },
+        "vendor_a/etc/fstab.agn3292SG": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.cali": {
+          "bytes": 833,
+          "sha256": "3f0015472e11902bb095fdb549b99fe0df9c21b6d39926c8d5b6d6b061aa413b"
+        },
+        "vendor_a/etc/fstab.charge_mode": {
+          "bytes": 344,
+          "sha256": "fe998681a4ec686f85b9899198b7aa459f04e747eef1c8c5624bfeb8344a52d1"
+        },
+        "vendor_a/etc/fstab.enableswap": {
+          "bytes": 208,
+          "sha256": "6ecbf1605cf119986f3e0abe224bb4390b1e43fc1985d35020b82ddaf5305a00"
+        },
+        "vendor_a/etc/fstab.ums9157_2h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_1h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10_uob": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10_uob_marlin3": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicyClass.xml": {
+          "bytes": 259,
+          "sha256": "60555f63dad10d9ff2ebdfee4705cd48cdd6b80565189727f32fcfba44f9a7bc"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicySubsystem-CommonTypes.xml": {
+          "bytes": 6319,
+          "sha256": "59f0af2d48e52be9ded962259b5c4fcca5d054c23b0e782741261532f8a8929d"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicySubsystem.xml": {
+          "bytes": 5859,
+          "sha256": "b0e10ff43fc9dc9058d7b699f180ed9cf6e4d258bab2884893c74a992724b250"
+        },
+        "vendor_a/lib/libimpl-ril.so": {
+          "bytes": 391624,
+          "sha256": "bc7757c2685d5139d3a2adc5ecdc7d544bbd63dfd261ce35e422c8b3b041b2e3"
+        },
+        "vendor_a/lib64/libimpl-ril.so": {
+          "bytes": 508440,
+          "sha256": "48442c80ea6536829972a3a4d1ea808c317f50615a0f54acc20a6228414f9b0d"
+        },
+        "odm_a/etc/audio_pcm.xml": {
+          "bytes": 4181,
+          "sha256": "89e2ce6abc12d1dccfbe7ad0c0ff1c765ce2f5ed1cc6b904d75dd573d2645fd6"
+        },
+        "odm_a/etc/audio_route.xml": {
+          "bytes": 56417,
+          "sha256": "25348d19859b7ae6d0dba68e62d69cbf1a391e949197f6547679749cac6d8043"
+        },
+        "odm_a/etc/audio_route_ab.xml": {
+          "bytes": 56233,
+          "sha256": "44e2395bd630a30b4d46b803b74bc7e332aad8f81ffdbf820e12b0cf59d98328"
+        },
+        "odm_a/etc/build.prop": {
+          "bytes": 9688,
+          "sha256": "717635fdfcc9c828417fcd20b8b719e51432e72e4d9b04d2ad35084c9eec58c0"
+        },
+        "odm_a/etc/audio/audio_policy_configuration.xml": {
+          "bytes": 1824,
+          "sha256": "5579f8acba7ad60ef58fc2058f0e679d1ea46934730d3e8ec4d858cd5282c706"
+        },
+        "odm_a/etc/audio/audio_policy_configuration_a2dp_offload_disabled.xml": {
+          "bytes": 1840,
+          "sha256": "486a57adde9721b154f305cf9ed951d252ca768fd5169e26c8aed7302ba7647a"
+        },
+        "odm_a/etc/audio/audio_policy_volumes.xml": {
+          "bytes": 10439,
+          "sha256": "2dac8b16c0841fdaafe1e6d0986a5035c4fe2c66e6178eabe24f2711900b0630"
+        },
+        "odm_a/etc/audio_params/sprd/audio_pga.xml": {
+          "bytes": 149569,
+          "sha256": "61e7ee04c8decd4f4a9aabaf4de3f4a454dd03a65a13af1d84bcc32356588b26"
+        },
+        "odm_a/etc/audio_params/sprd/audio_process.xml": {
+          "bytes": 292764,
+          "sha256": "e2bf829955def9e70cfe9ff8210bc1b21e86f08217a2158d8cbdfdaabfc3d659"
+        },
+        "odm_a/etc/audio_params/sprd/audio_structure.xml": {
+          "bytes": 2287046,
+          "sha256": "d55b29e280394fc09e513b18ce703660280a85722f3a1b62b9fe9f79a4f203c5"
+        },
+        "odm_a/etc/audio_params/sprd/audioparam_config.xml": {
+          "bytes": 12209,
+          "sha256": "d9d461c1c910493cf3a46113a2f8c2604311c48afe10a14ae3b14b8fef5fd88c"
+        },
+        "odm_a/etc/audio_params/sprd/codec.xml": {
+          "bytes": 614277,
+          "sha256": "cc53b139568bcc738639b1428e8edcc6f66f329d3a1badd0210bcc4684fe7b1e"
+        },
+        "vendor_dlkm_a/etc/build.prop": {
+          "bytes": 1089,
+          "sha256": "5d7145dcae0424038ee835b60f299bff5ca59014a3cf5302d122eb6f1e684bf6"
+        },
+        "vendor_dlkm_a/lib/modules/eta6937-charger.ko": {
+          "bytes": 33792,
+          "sha256": "3ec09461206dafe302a276e5bf27cd50dc475e47c6edb76104dd819502dac3d2"
+        },
+        "vendor_dlkm_a/lib/modules/phy-sprd-usb31-qogirn6pro.ko": {
+          "bytes": 40032,
+          "sha256": "89799723d42ca05fb13d25d7b1c5a2490278b0fe55e4175d4db60d9d48eb6b73"
+        },
+        "vendor_dlkm_a/lib/modules/snd-soc-sprd-codec-aw87xxx.ko": {
+          "bytes": 211136,
+          "sha256": "f497be08f3ce90340d6b20637322fd0b71e0663ac7f79a62f304a1b2ff6d3840"
+        },
+        "vendor_dlkm_a/lib/modules/sprd-charger-manager.ko": {
+          "bytes": 262512,
+          "sha256": "ce598dab2d8b5ef36bd7793830840d5510710fa6492b42bf6bec62d5662a800c"
+        },
+        "vendor_dlkm_a/lib/modules/sprd-drm.ko": {
+          "bytes": 1111400,
+          "sha256": "f49b7e242ee40c8e60a42cbb0063e973ee385cf109b9f85c08a03d66af954c12"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_battery_info.ko": {
+          "bytes": 28424,
+          "sha256": "39c32ec71d79d65c35d31b4f0f5844b50d994bd070cf610484a6e2f07613919b"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_typec_displayport.ko": {
+          "bytes": 23776,
+          "sha256": "cc09507c5e4669674d5a879d977dd00782c48ec00a02fb300031cf44068d6b11"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_usb_f_rndis.ko": {
+          "bytes": 95944,
+          "sha256": "dba7a71638f11f3ff62f00a47c4e92a79118e5ad9b697e1522a6bb1b52dc8cc9"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_usbm.ko": {
+          "bytes": 17512,
+          "sha256": "1d3fff9788db1115c000d789af309f00c1072d570f61d433d4ed5e42ba95d1fd"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_wlan_combo.ko": {
+          "bytes": 1838520,
+          "sha256": "10cc92755b2e5cb9c0f4fc955494928aa717d07ad26a51925606c41169c92d19"
+        },
+        "vendor_dlkm_a/lib/modules/tlsc6540.ko": {
+          "bytes": 195608,
+          "sha256": "8b440d69f6d59f4dc024f1135a4d20f1c758230af37f703d9cea537bfdec0bbf"
+        }
+      }
+    },
+    {
+      "build": "CP21.20240304.1S.GCY",
+      "kernel": "5.4.210-android12-9-g90405eed156b",
+      "hashes": {
+        "boot_a.img": "9b3c871c1bbac92a2fd452cec2e3a65351344c8f5f717ef6f317cb22590773c0",
+        "boot_b.img": "959207ba25360d813955e0d9e002b7ed6ff0515d2939a04af9192ea566dfec74",
+        "vendor_boot_a.img": "4032e6a0e8236d31f3b7ab5b9330c896c23ab5b3cd7e3bc0e4b20cce55bdbc58",
+        "vendor_boot_b.img": "4032e6a0e8236d31f3b7ab5b9330c896c23ab5b3cd7e3bc0e4b20cce55bdbc58",
+        "dtb_a.img": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+        "dtb_b.img": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+        "dtbo_a.img": "5add4cc6501b3960ce2dff28a54dbfbc2a2ff9d4adbe211a0a893c7075007d40",
+        "dtbo_b.img": "5add4cc6501b3960ce2dff28a54dbfbc2a2ff9d4adbe211a0a893c7075007d40",
+        "sml_a.img": "355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b",
+        "sml_b.img": "355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b"
+      },
+      "base_fdt_sha256": "d311506132acfd784dfb4056d1d1d370d084faa6c8732365d83d525ab5a8f6b8",
+      "dtbo_5_sha256": "7fbfeb18ebea051d07e200feae3686f9e668009cc526d0b140acf168d3896d1d",
+      "selected_stock_files": {
+        "vendor_a/build.prop": {
+          "bytes": 15994,
+          "sha256": "f2e9a48c9367a9972ceec3412ef5830e575670b53458690b9cf8e391876112ab"
+        },
+        "vendor_a/etc/audio_config.xml": {
+          "bytes": 4463,
+          "sha256": "c2739fc247059b00203de11dc9cef03c4df2bacbd798e6a55827d924020cae56"
+        },
+        "vendor_a/etc/audio_effects.xml": {
+          "bytes": 6129,
+          "sha256": "16382c81bbbccdce3f49fae1ffea68223b82d63dd265aaed0689b75404fe6787"
+        },
+        "vendor_a/etc/audio_policy_apm_configuration_configurable.xml": {
+          "bytes": 1730,
+          "sha256": "de9da9f5ed4456edc40f8710c0d8e4477dc73e16af609f50033342a9239a8938"
+        },
+        "vendor_a/etc/audio_policy_configuration.xml": {
+          "bytes": 1761,
+          "sha256": "2404e9fabd99129b79ad88cef0d5fee188ce690a6d95b2e6fa1a7004114b78b6"
+        },
+        "vendor_a/etc/audio_policy_configuration_a2dp_offload_disabled.xml": {
+          "bytes": 1682,
+          "sha256": "87def7df3be39499e0ddaf1b4d808f5b028410c11cb039afa90c8f5479910092"
+        },
+        "vendor_a/etc/audio_policy_configuration_bluetooth_legacy_hal.xml": {
+          "bytes": 1691,
+          "sha256": "f251524a2f194365fd3e442f2fa6314fcbfd464051e83df2f066ff4a2d870cd0"
+        },
+        "vendor_a/etc/audio_policy_engine_configuration.xml": {
+          "bytes": 1118,
+          "sha256": "e3c4ba99e3e023ab99dd44409973c7dd2a11c57653c4d151540ea381617aba48"
+        },
+        "vendor_a/etc/audio_policy_engine_criterion_types.xml": {
+          "bytes": 8796,
+          "sha256": "06bf810d444c7844cf9aec55dcc8acc3056e594a9ee4b1f5ddf05bd62460cf43"
+        },
+        "vendor_a/etc/audio_policy_engine_default_stream_volumes.xml": {
+          "bytes": 5400,
+          "sha256": "9d100b9a2553aa775c94333dbe076a6c3b2150f3f3d33cf6df3d80514fbc220a"
+        },
+        "vendor_a/etc/audio_policy_engine_product_strategies.xml": {
+          "bytes": 4583,
+          "sha256": "a86433aec2f521c9614a251e44e740993b5098aadbf5b2efe5647bfde9bc4907"
+        },
+        "vendor_a/etc/audio_policy_engine_stream_volumes.xml": {
+          "bytes": 10569,
+          "sha256": "38897dde39c6b9754ff1c80d93004500e8332043ceb860bde7cfa18e376334f9"
+        },
+        "vendor_a/etc/audio_policy_volumes.xml": {
+          "bytes": 10439,
+          "sha256": "2dac8b16c0841fdaafe1e6d0986a5035c4fe2c66e6178eabe24f2711900b0630"
+        },
+        "vendor_a/etc/fstab.agn3292SG": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.cali": {
+          "bytes": 833,
+          "sha256": "3f0015472e11902bb095fdb549b99fe0df9c21b6d39926c8d5b6d6b061aa413b"
+        },
+        "vendor_a/etc/fstab.charge_mode": {
+          "bytes": 344,
+          "sha256": "fe998681a4ec686f85b9899198b7aa459f04e747eef1c8c5624bfeb8344a52d1"
+        },
+        "vendor_a/etc/fstab.enableswap": {
+          "bytes": 208,
+          "sha256": "6ecbf1605cf119986f3e0abe224bb4390b1e43fc1985d35020b82ddaf5305a00"
+        },
+        "vendor_a/etc/fstab.ums9157_2h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_1h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10_uob": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/fstab.ums9620_2h10_uob_marlin3": {
+          "bytes": 2291,
+          "sha256": "465642e88342042461fefe411f486cf9ef51f47090f781de456f0be525b294ed"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicyClass.xml": {
+          "bytes": 259,
+          "sha256": "60555f63dad10d9ff2ebdfee4705cd48cdd6b80565189727f32fcfba44f9a7bc"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicySubsystem-CommonTypes.xml": {
+          "bytes": 6319,
+          "sha256": "59f0af2d48e52be9ded962259b5c4fcca5d054c23b0e782741261532f8a8929d"
+        },
+        "vendor_a/etc/parameter-framework/Structure/Policy/audio_PolicySubsystem.xml": {
+          "bytes": 5859,
+          "sha256": "b0e10ff43fc9dc9058d7b699f180ed9cf6e4d258bab2884893c74a992724b250"
+        },
+        "vendor_a/lib/libimpl-ril.so": {
+          "bytes": 391624,
+          "sha256": "2a5973ec256d48d11107c8d4df5327985e7df5cfa1f7902cdc9796798f344ed3"
+        },
+        "vendor_a/lib64/libimpl-ril.so": {
+          "bytes": 508440,
+          "sha256": "29e0499250229d0d6f0506b1fc4da5c649af6a9dd9d30262661ec9a6f4924eb1"
+        },
+        "odm_a/etc/audio_pcm.xml": {
+          "bytes": 4181,
+          "sha256": "89e2ce6abc12d1dccfbe7ad0c0ff1c765ce2f5ed1cc6b904d75dd573d2645fd6"
+        },
+        "odm_a/etc/audio_route.xml": {
+          "bytes": 56417,
+          "sha256": "25348d19859b7ae6d0dba68e62d69cbf1a391e949197f6547679749cac6d8043"
+        },
+        "odm_a/etc/audio_route_ab.xml": {
+          "bytes": 56233,
+          "sha256": "44e2395bd630a30b4d46b803b74bc7e332aad8f81ffdbf820e12b0cf59d98328"
+        },
+        "odm_a/etc/build.prop": {
+          "bytes": 9688,
+          "sha256": "0fa5bf20f39e961df054268f6746e809daeaa18d8fb7f8d832aa3453c63ce042"
+        },
+        "odm_a/etc/audio/audio_policy_configuration.xml": {
+          "bytes": 1824,
+          "sha256": "5579f8acba7ad60ef58fc2058f0e679d1ea46934730d3e8ec4d858cd5282c706"
+        },
+        "odm_a/etc/audio/audio_policy_configuration_a2dp_offload_disabled.xml": {
+          "bytes": 1840,
+          "sha256": "486a57adde9721b154f305cf9ed951d252ca768fd5169e26c8aed7302ba7647a"
+        },
+        "odm_a/etc/audio/audio_policy_volumes.xml": {
+          "bytes": 10439,
+          "sha256": "2dac8b16c0841fdaafe1e6d0986a5035c4fe2c66e6178eabe24f2711900b0630"
+        },
+        "odm_a/etc/audio_params/sprd/audio_pga.xml": {
+          "bytes": 149569,
+          "sha256": "61e7ee04c8decd4f4a9aabaf4de3f4a454dd03a65a13af1d84bcc32356588b26"
+        },
+        "odm_a/etc/audio_params/sprd/audio_process.xml": {
+          "bytes": 292764,
+          "sha256": "e2bf829955def9e70cfe9ff8210bc1b21e86f08217a2158d8cbdfdaabfc3d659"
+        },
+        "odm_a/etc/audio_params/sprd/audio_structure.xml": {
+          "bytes": 2287046,
+          "sha256": "d55b29e280394fc09e513b18ce703660280a85722f3a1b62b9fe9f79a4f203c5"
+        },
+        "odm_a/etc/audio_params/sprd/audioparam_config.xml": {
+          "bytes": 12209,
+          "sha256": "d9d461c1c910493cf3a46113a2f8c2604311c48afe10a14ae3b14b8fef5fd88c"
+        },
+        "odm_a/etc/audio_params/sprd/codec.xml": {
+          "bytes": 614277,
+          "sha256": "cc53b139568bcc738639b1428e8edcc6f66f329d3a1badd0210bcc4684fe7b1e"
+        },
+        "vendor_dlkm_a/etc/build.prop": {
+          "bytes": 1089,
+          "sha256": "5002890c21596bde716433b56bea7dd7a37eea60ed54a93ba989417563a5eda2"
+        },
+        "vendor_dlkm_a/lib/modules/eta6937-charger.ko": {
+          "bytes": 33792,
+          "sha256": "0cd4bf317a3917de3547be6dd78e0b595ff78107e42465014edd43faa0dd054d"
+        },
+        "vendor_dlkm_a/lib/modules/phy-sprd-usb31-qogirn6pro.ko": {
+          "bytes": 40032,
+          "sha256": "d0cc4d688c0f8f1e2511f49e712e51ec305db0cc4e66bf11de525d578140674e"
+        },
+        "vendor_dlkm_a/lib/modules/snd-soc-sprd-codec-aw87xxx.ko": {
+          "bytes": 211152,
+          "sha256": "12e9917933b25b69982acf24bd1b602ed53a8756c63e92f9f33212eabb9e344b"
+        },
+        "vendor_dlkm_a/lib/modules/sprd-charger-manager.ko": {
+          "bytes": 262512,
+          "sha256": "72ab529c74141f94eda1981dd1f2f0420da3a0b0c181723cfaa1a4398605f42b"
+        },
+        "vendor_dlkm_a/lib/modules/sprd-drm.ko": {
+          "bytes": 1111400,
+          "sha256": "2b523b4964274d0367b6b0a3fa8daa5ef875b189b41c5d2c7a0f6c3c6cff9e62"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_battery_info.ko": {
+          "bytes": 28424,
+          "sha256": "ad00b5d25c2232f78180694a12e2bbdbb34a5cbcea54b49999057c23106b3887"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_typec_displayport.ko": {
+          "bytes": 23776,
+          "sha256": "7db283399fd39ede66e02242785cc476849ddb8fe290404fbe9caf6b459e0e4c"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_usb_f_rndis.ko": {
+          "bytes": 95944,
+          "sha256": "0cf03abfcbba27dad8f24fe37b178adc4aa04a818264687b8be9fc82f6706442"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_usbm.ko": {
+          "bytes": 17512,
+          "sha256": "9efd436c62439a0a91210c103cfd7ce6f02710c4391a7abfdabdeea624dcd5f1"
+        },
+        "vendor_dlkm_a/lib/modules/sprd_wlan_combo.ko": {
+          "bytes": 1838520,
+          "sha256": "a966a3b7bdfb2da20ea178c2bfd4ec372c35adce5954fa6616a39b248585a8d2"
+        },
+        "vendor_dlkm_a/lib/modules/tlsc6540.ko": {
+          "bytes": 195608,
+          "sha256": "fbfa2186c82170c5790f67862a0c948cc89b720ce7d915ecabca6b778a27f0b8"
+        }
+      }
+    }
+  ],
+  "reference_sources": [
+    {
+      "url": "https://github.com/Enceka/kernel_sprd_ums9158/blob/63b8011056a5060e274fc1dcc9051c94d9a7bab8/drivers/power/supply/eta6937-charger.c",
+      "sha256": "564308354c251edfbada86d785b0a165b8ef0cdc86afb2aa213ef846923dcbc4",
+      "role": "GPL reference only; old PMIC/probe binding differs from Y60"
+    },
+    {
+      "url": "https://github.com/realme-kernel-opensource/realme_C51_C53_Narzo-N53-AndroidT-kernel-source/blob/4381465ccaf87fcf3215b9cd42f4a685df40e5e0/drivers/power/supply/eta6937-charger.c",
+      "sha256": "1640b1bc43b5e6e8274bf1be8eb8cfe2393370dc1b5dab447e94c487849dfbf1",
+      "role": "GPL cross-check; differs only in remove mutex cleanup from the other reference"
+    }
+  ],
+  "driver_comparison": "driver-audit.json",
+  "voltage_firmware_comparison": "sml-audit.json"
+}

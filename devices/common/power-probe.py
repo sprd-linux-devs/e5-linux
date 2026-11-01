@@ -6,15 +6,28 @@ HERE = Path(__file__).resolve().parent
 INCLUDE = '#include "power-probe.h"\n'
 
 
-def edit(source, old, new):
-    if new in source:
+def edit(source, old, new, count=1):
+    if source.count(new) == count:
         return source
-    if source.count(old) != 1:
+    if source.count(old) != count:
         raise ValueError('Unsupported power probe source: ' + old[:95])
-    return source.replace(old, new, 1)
+    return source.replace(old, new, count)
 
 
 def gauge_core(source):
+    source = edit(source, '''\tif (IS_ERR(data->fgu_info)) {
+\t\tdev_err(data->dev, "failed to get fgu_info!!!\\n");
+\t\treturn -EPROBE_DEFER;
+\t}''', '''\tif (IS_ERR(data->fgu_info))
+\t\treturn dev_err_probe(data->dev, PTR_ERR(data->fgu_info),
+\t\t\t\t     "failed to get FGU hardware description\\n");''', count=2)
+    source = edit(source, '''\tif (unlikely(!psy->initialized && atomic_read(&psy->use_cnt) > 0)) {
+\t\tdev_err(data->dev, "%s psy is not ready\\n", __func__);
+\t\treturn -ENODEV;
+\t}''', '''\tif (unlikely(!psy->initialized && atomic_read(&psy->use_cnt) > 0)) {
+\t\t/* Published supply, but power_supply registration is not complete. */
+\t\treturn -EAGAIN;
+\t}''', count=2)
     source = edit(source, '''\tdata->regmap = dev_get_regmap(dev->parent, NULL);
 \tif (!data->regmap) {
 \t\tdev_err(dev, "failed to get regmap\\n");
@@ -48,6 +61,34 @@ def gauge_core(source):
 
 
 def gauge_hardware(source):
+    source = edit(source, '''\t{ .compatible = "sprd,ump9620-fgu", .data = &ump96xx_fgu_info}
+};''', '''\t{ .compatible = "sprd,ump9620-fgu", .data = &ump96xx_fgu_info},
+\t{ }
+};''')
+    source = edit(source, '''\tint ret = 0, i;
+\tconst char *value = {0};
+\tstruct device_node *np = dev->of_node;''', '''\tint ret = 0;
+\tconst struct of_device_id *match;''')
+    source = edit(source, '''\tret = of_property_read_string_index(np, "compatible", 0, &value);
+\tif (ret) {
+\t\tdev_err(dev, "read_string failed!\\n");
+\t\treturn ERR_PTR(ret);
+\t}
+
+\tfor (i = 0; i < ARRAY_SIZE(ump96xx_fgu_dev_match_arr); i++) {
+\t\tif (strcmp(ump96xx_fgu_dev_match_arr[i].compatible, value) == 0) {
+\t\t\tinfo->pdata = ump96xx_fgu_dev_match_arr[i].data;
+\t\t\tbreak;
+\t\t} else if (i == ARRAY_SIZE(ump96xx_fgu_dev_match_arr) - 1) {
+\t\t\tdev_err(dev, "failed match ump96xx dev table!\\n");
+\t\t\treturn ERR_PTR(-ENODATA);
+\t\t}
+\t}''', '''\t/* Honor the full DT compatible list, including a known fallback. */
+\tmatch = of_match_node(ump96xx_fgu_dev_match_arr, dev->of_node);
+\tif (!match)
+\t\treturn ERR_PTR(dev_err_probe(dev, -ENODATA,
+\t\t\t\t\t    "unsupported FGU compatible list\\n"));
+\tinfo->pdata = match->data;''')
     source = edit(source, '''\tinfo->regmap = dev_get_regmap(dev->parent, NULL);
 \tif (!info->regmap) {
 \t\tdev_err(dev, "%s: %d failed to get regmap\\n", __func__, __LINE__);
@@ -56,6 +97,27 @@ def gauge_hardware(source):
 \tif (IS_ERR(info->regmap))
 \t\treturn ERR_CAST(info->regmap);''')
     return source if INCLUDE in source else INCLUDE + source
+
+
+def manager(source):
+    # A named supply can be found while its own registration is still running.
+    # Retry only that explicit transient status; keep real I/O/config errors.
+    for call, message in (
+        ('get_boot_cap(cm, &cm->desc->cap)', 'Failed to get initial battery capacity'),
+        ('cm_get_battery_temperature(cm, &cm->desc->temperature)', 'failed to get battery temperature'),
+    ):
+        source = edit(source, f'''\tret = {call};
+\tif (ret) {{
+\t\tdev_err({'&pdev->dev' if call.startswith('get_boot') else 'cm->dev'}, "{message}\\n");
+\t\treturn ret;
+\t}}''', f'''\tret = {call};
+\tif (ret) {{
+\t\tpower_supply_put(fuel_gauge);
+\t\treturn dev_err_probe(cm->dev,
+\t\t\t\t     ret == -EAGAIN ? -EPROBE_DEFER : ret,
+\t\t\t\t     "{message}\\n");
+\t}}''')
+    return source
 
 
 def charger(source, name):
@@ -93,6 +155,7 @@ def apply(kernel):
     changes = {
         'sprd_fuel_gauge_core.c': gauge_core((directory/'sprd_fuel_gauge_core.c').read_text()),
         'sprd_ump96xx_fuel_gauge.c': gauge_hardware((directory/'sprd_ump96xx_fuel_gauge.c').read_text()),
+        'charger-manager.c': manager((directory/'charger-manager.c').read_text()),
     }
     for name in ('bq2560x-charger.c', 'aw32257_charger.c'):
         if (directory/name).exists():

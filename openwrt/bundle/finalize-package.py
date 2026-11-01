@@ -11,7 +11,7 @@ import shutil
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-MODELS = {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME M8', 't512n': 'T512N', 'yuanhang41s':'ZTE 7546N', 'k1':'angelcare K1', 'lym10k': 'LYM-10K', 'changxing60': 'ZTE 7552N'}
+MODELS = {'e5': 'E5', 't551m': 'T551M', 'm8': 'VIPME M8', 't512n': 'T512N', 'yuanhang41s':'ZTE 7546N', 'k1':'angelcare K1', 'lym10k': 'LYM-10K', 'changxing60': 'ZTE 7552N', 'y60': 'CP23NV3'}
 
 
 def digest(path):
@@ -89,12 +89,14 @@ def finalize(package, profile, bootctl):
         'description=ERASES THE SELECTED TF PARTITION (or unpartitioned card) and deploys OpenWrt. Android userdata is preserved. Reboot manually.\n',
         encoding='utf-8', newline='\n')
     values = {'PROFILE': profile, 'ANDROID_MODEL': MODELS[profile],
-              'DEFAULT_SSID': {'e5': 'E5', 't551m': 'T551M', 'm8': 'M8', 't512n': 'T512N', 'yuanhang41s':'Yuanhang41S', 'k1':'K1', 'lym10k':'LYM-10K', 'changxing60':'Changxing60'}[profile] + '-OpenWrt',
+              'DEFAULT_SSID': {'e5': 'E5', 't551m': 'T551M', 'm8': 'M8', 't512n': 'T512N', 'yuanhang41s':'Yuanhang41S', 'k1':'K1', 'lym10k':'LYM-10K', 'changxing60':'Changxing60', 'y60':'Y60'}[profile] + '-OpenWrt',
               'SLOT_ROLES_VERSION':str(boot.get('slot_roles_version',0)),
               'RAW_BYTES': str(size), 'RAW_SHA256': raw_hash.hexdigest(),
               'BOOT_BYTES': str((files / 'boot.img').stat().st_size), 'BOOT_SHA256': boot['sha256']}
     (files / 'tf-install.env').write_text(''.join(k + '=' + shlex.quote(v) + '\n' for k, v in values.items()), newline='\n')
     guide = (package / 'START-HERE.md').read_text(encoding='utf-8')
+    if profile == 'y60':
+        guide = (HERE.parents[1] / 'devices/y60/TESTING.zh-CN.md').read_text(encoding='utf-8') + '\n' + guide
     (package / 'START-HERE.md').write_text(guide.replace('@MODEL@', MODELS[profile]).replace('@PROFILE@', profile),
                                          encoding='utf-8', newline='\n')
     sums = files / 'SHA256SUMS'

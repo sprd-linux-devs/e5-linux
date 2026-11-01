@@ -16,7 +16,8 @@ import unittest
 PROTO, LUCI = [Path(p).read_text() for p in sys.argv[1:3]]
 del sys.argv[1:3]
 HERE = Path(__file__).resolve().parent
-PROFILES = runpy.run_path(str(HERE.parents[1]/'tools/build-release.py'))['PROFILES']
+BUILD = runpy.run_path(str(HERE.parents[1]/'tools/build-release.py'))
+PROFILES = (*BUILD['PROFILES'], *BUILD['EXPERIMENTAL_PROFILES'])
 patch_root = runpy.run_path(str(HERE / 'network-startup.py'))['patch_root']
 LOADER = (HERE.parents[1] / 'openwrt/overlay/etc/init.d/e5-sipc-wwan').read_text()
 

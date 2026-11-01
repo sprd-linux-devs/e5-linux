@@ -24,6 +24,7 @@ TOP = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
 OWNER = 'e5-linux-build-release-v1'
 PROFILES = ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60')
+EXPERIMENTAL_PROFILES = ('y60',)
 COMMON = ('base', 'defaults', 'busybox', 'block_apk', 'wifi_apks')
 
 
@@ -61,7 +62,7 @@ def layout(config, workspace, profiles, repo=TOP):
     common = {key: path(data[key]) for key in COMMON}
     rows = {}
     for model in profiles:
-        if model not in PROFILES or model not in data['profiles']:
+        if model not in (*PROFILES, *EXPERIMENTAL_PROFILES) or model not in data['profiles']:
             raise ValueError('Unknown/unconfigured model: ' + model)
         rows[model] = {key: path(data['profiles'][model][key])
                        for key in ('kernel', 'stock_boot', 'misc_head')}
@@ -88,7 +89,7 @@ def workspace_lock(workspace):
 
 
 def stage_path(workspace, model):
-    if model not in PROFILES:
+    if model not in (*PROFILES, *EXPERIMENTAL_PROFILES):
         raise ValueError('Unknown staging model')
     parent = workspace / 'package-work/e5-release'
     target = parent / model
@@ -329,7 +330,7 @@ def refresh_installers(task, common, rows, source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('plan', 'check', 'package', 'refresh-installers', 'run', 'status', 'clean-staging'))
-    parser.add_argument('--profiles', nargs='+', choices=('all', *PROFILES), default=['all'])
+    parser.add_argument('--profiles', nargs='+', choices=('all', *PROFILES, *EXPERIMENTAL_PROFILES), default=['all'])
     parser.add_argument('--workspace', type=Path, default=Path.home() / 'openwrt-build')
     parser.add_argument('--config', type=Path, default=TOP / 'tools/build-layout.json')
     parser.add_argument('--label', default='build')

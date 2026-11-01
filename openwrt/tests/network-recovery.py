@@ -49,6 +49,20 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.resumes(), [['ubus', 'call', 'network.interface.wan',
                                           'notify_proto', '{"action":5,"available":true}']])
 
+    def test_data_only_sim_needs_no_ims_or_cs_registration(self):
+        for slot in ('1', '2'):
+            for rat in ('lte', '5gnr'):
+                for registration in ('home', 'roaming'):
+                    self.modem = copy.deepcopy(MODEM)
+                    self.modem['generic'].update({'primary-sim-slot': slot,
+                                                 'access-technologies': [rat]})
+                    self.modem['3gpp'].update({'registration-state': registration,
+                                             'cs-registration-state': 'denied'})
+                    self.commands.clear()
+                    self.recovery = Recovery()
+                    self.recovery.evaluate()
+                    self.assertEqual(len(self.resumes()), 1, (slot, rat, registration))
+
     def test_manual_ifdown_pending_up_pin_and_auth_are_preserved(self):
         for update in ({'autostart': False}, {'pending': True}, {'up': True},
                        {'errors': [{'code': 'MM_PIN_REQUIRED'}]}, {'proto': 'dhcp'}):

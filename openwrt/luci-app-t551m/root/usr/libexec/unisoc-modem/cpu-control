@@ -29,6 +29,11 @@ VERIFIED_UMS9620_VOLTAGE_FIRMWARE = frozenset({
     # AngelCare.K1.YUAN.YD.T1.0: DVFS code/tables match the verified M8
     # payload byte-for-byte; devices/k1/CPU-POWER.zh-CN.md.
     'efc2e6cf3a83a1dbbedecbea12673a7320520632b7b3f59c9072276f9b24d5eb',
+    # Y60 CP23NV3 20240108/20240304: complete DHTB executable/data payload
+    # identical to audited K1; devices/y60/CPU-POWER.zh-CN.md. Keep separate
+    # complete-partition hashes; mixed/unknown slots are still rejected.
+    '7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9',
+    '355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b',
     # ZTE 7552N/P720S20 20240919.212928: recipient DVFS_INIT decoder,
     # paired table paths and 3.125 mV selector; devices/changxing60/CPU-POWER.zh-CN.md.
     'de9b51aa6381d0af921ae5e1ba6499aff8e99e88c92c53259d62a9106c29553a',

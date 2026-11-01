@@ -29,6 +29,7 @@ preflight() {
         k1) [ "$(getprop ro.product.device)" = ums9157_2h10 ] || fail 'unknown K1 board' ;;
         changxing60) [ "$(getprop ro.product.device)" = P720S20 ] || fail 'unknown Changxing60 board' ;;
         lym10k) [ "$(getprop ro.product.device)" = RY5G ] || fail 'unknown LYM-10K board' ;;
+        y60) [ "$(getprop ro.product.device)" = CP23NV3 ] || fail 'unknown Y60 board' ;;
     esac
     [ -s "$P/files/ext4-tools.tar" ] || fail 'missing bundled ext4 tools'
     tar -tf "$P/files/ext4-tools.tar" > "$STATE/ext4-tools.list"
@@ -93,6 +94,10 @@ prepare_firmware() {
     if [ "$PROFILE" = changxing60 ]; then
         cp /odm/etc/audio_config.xml /odm/etc/audio_route.xml /odm/etc/audio_params/sprd/audio_pga.xml "$raw/"
         cp /vendor/firmware/axs_firmware_easyquick.bin "$raw/"
+    fi
+    if [ "$PROFILE" = y60 ]; then
+        cp /odm/etc/audio_route.xml /odm/etc/audio_params/sprd/audio_pga.xml "$raw/"
+        cp /vendor/firmware/aw87xxx_acf.bin /odm/etc/audio_params/sprd/codec.xml "$raw/"
     fi
     cp /mnt/vendor/btmac.txt "$raw/"
     cp /odm/firmware/wifi_board_config*.ini "$raw/"

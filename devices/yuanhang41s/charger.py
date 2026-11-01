@@ -3,18 +3,44 @@ from pathlib import Path
 import runpy
 HERE=Path(__file__).resolve().parent
 
+def probe_identity(source):
+ # Stock SQC probes the DT address before its SGM41513 0x1a fallback.
+ # Keep only the verified SGM41513 register map, not every SQC chip branch.
+ marker='/* 41S stock address selection; identify before any charger writes. */'
+ if marker in source:return source
+ anchor='\tret = bq2560x_read(info, BQ2560X_REG_B, &val);'
+ start=source.index(anchor)
+ old='\t/* P720S11 SGM41513: factory driver switches this DT alias to 0x1a. */'
+ if old in source:start=source.index(old)
+ end=source.index('\n\ti2c_set_clientdata(client, info);', start)
+ return source[:start]+'''\t/* 41S stock address selection; identify before any charger writes. */
+\t{
+\t\tu16 original_addr = client->addr;
+
+\t\tif (original_addr != 0x6b && original_addr != 0x1a)
+\t\t\treturn dev_err_probe(dev, -ENODEV, "unsupported 41S charger address\\n");
+\t\tret = bq2560x_read(info, BQ2560X_REG_B, &val);
+\t\tif (original_addr == 0x6b && (ret == -ENXIO || ret == -EREMOTEIO)) {
+\t\t\tclient->addr = 0x1a;
+\t\t\tret = bq2560x_read(info, BQ2560X_REG_B, &val);
+\t\t}
+\t\tif (ret < 0 || (val >> 3) != 0) {
+\t\t\tclient->addr = original_addr;
+\t\t\treturn dev_err_probe(dev, ret < 0 ? ret : -ENODEV,
+\t\t\t\t\t     "41S SGM41513 identification failed: %#x\\n", val);
+\t\t}
+\t}
+\tstrscpy(info->charge_ic_vendor_name, "41S-SGM41513",
+\t\tsizeof(info->charge_ic_vendor_name));
+''' + source[end:]
+
 def apply(kernel):
  replace=runpy.run_path(str(HERE.parent/'t551m/prepare-kernel.py'))['replace_function']
  path=Path(kernel)/'drivers/power/supply/bq2560x-charger.c';s=path.read_text(encoding="utf-8")
  if 'yh41s-charge-current.h' not in s:s='#include "yh41s-charge-current.h"\n'+s
  s=s.replace('#define BQ2560X_REG_NUM\t\t\t\t0x12','#define BQ2560X_REG_NUM\t\t\t\t0x0e')
  s=s.replace('for (i = 0; i <= 0x11; i++)','for (i = 0; i <= 0x0d; i++)')
- anchor='\tret = bq2560x_read(info, BQ2560X_REG_B, &val);'
- if 'P720S11 SGM41513' not in s:
-  if s.count(anchor)!=1:raise ValueError('Charger ID anchor changed')
-  s=s.replace(anchor,'\t/* P720S11 SGM41513: factory driver switches this DT alias to 0x1a. */\n\tclient->addr = 0x1a;\n'+anchor)
- s=s.replace('val != 0x12 || client->addr != 0x6b','(val >> 3) != 0 || client->addr != 0x1a')
- s=s.replace('unsupported M8 charger ID','unsupported 41S SGM41513 ID').replace('"M8-0x12"','"41S-SGM41513"')
+ s=probe_identity(s)
  # Use this handset's battery DT, never the donor's initial 4112 mV.
  s=s.replace('bq2560x_charger_set_termina_vol(info, 4112)',
              'bq2560x_charger_set_termina_vol(info, voltage_max_microvolt)')

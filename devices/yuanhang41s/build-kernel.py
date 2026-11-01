@@ -33,7 +33,7 @@ def config(base, here=HERE):
 
 
 def main(*, profile='yuanhang41s', here=HERE):
-    if profile not in ('yuanhang41s','changxing60'):
+    if profile not in ('yuanhang41s','changxing60','y60'):
         raise ValueError('Unsupported UMS9620 profile')
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('kernel','build','base-config','out'):parser.add_argument('--'+name,type=Path,required=True)
@@ -47,9 +47,16 @@ def main(*, profile='yuanhang41s', here=HERE):
     runpy.run_path(str(here/'prepare-kernel.py'))['apply'](kernel)
     subprocess.run(['python3',str(TOP/'devices/common/test_power_probe.py'),
                     '--kernel',str(kernel)],check=True)
-    for test in ('test_boot_soc.py', 'test_battery_periodic.py', 'test_capacity_remap.py', 'test_charger_endpoint.py'):
+    tests=['test_boot_soc.py', 'test_battery_periodic.py', 'test_capacity_remap.py']
+    # The BQ endpoint test is specific to the 41S/CX60 charger implementation.
+    # Y60 has a different silicon/register map and executes its own real C callbacks.
+    if profile!='y60':tests.append('test_charger_endpoint.py')
+    for test in tests:
         extra = ['--kernel'] if test == 'test_charger_endpoint.py' else []
         subprocess.run(['python3', str(TOP/'devices/common'/test), *extra, str(kernel)], check=True)
+    if profile=='y60':
+        subprocess.run(['python3',str(here/'test-charger.py'),'--kernel',str(kernel)],check=True)
+        subprocess.run(['python3',str(here/'test_audio.py'),'--kernel',str(kernel)],check=True)
     build.mkdir(parents=True,exist_ok=True);out.mkdir(parents=True,exist_ok=True)
     # Do not create another checkout, copy a rootfs or run modules_install into
     # a persistent duplicate root. Only the delivery module cohort is staged.
@@ -58,8 +65,10 @@ def main(*, profile='yuanhang41s', here=HERE):
     command=['make','-C',str(kernel),'O='+str(build),'ARCH=arm64','LLVM=1','LLVM_IAS=1','CROSS_COMPILE=aarch64-linux-gnu-']
     subprocess.run(command+['olddefconfig'],env=env,check=True)
     subprocess.run(command+['-j'+str(args.jobs),'Image','modules'],env=env,check=True)
+    if profile=='y60' and (kernel/'drivers/power/supply/eta6937-charger.c').read_bytes()!=(here/'eta6937-charger.c').read_bytes():
+        raise ValueError('Y60 charger input changed during compilation; rerun preparation/build before delivery')
     release=(build/'include/config/kernel.release').read_text().strip()
-    tags=('-yuanhang41s-', '-yh41s-') if profile=='yuanhang41s' else ('-changxing60-',)
+    tags=('-yuanhang41s-', '-yh41s-') if profile=='yuanhang41s' else ('-'+profile+'-',)
     if not any(tag in release for tag in tags):
         raise ValueError('Wrong profile release: '+release)
     for source,target in (('arch/arm64/boot/Image','Image'),('.config','config'),

@@ -117,9 +117,106 @@ def between(source, start, end):
     return source[at:source.index(end, at)]
 
 
+def provider_checks(root, after):
+    hardware = after[HARDWARE].decode()
+    core = after[CORE].decode()
+    cm = after['charger-manager.c'].decode()
+    table = between(hardware, 'static const struct of_device_id ump96xx_fgu_dev_match_arr[]', '\n\nstatic inline')
+    match = between(hardware, '\t/* Honor the full DT compatible list', '\n\tret = device_property_read_u32')
+    gate = between(core, '\tif (unlikely(!psy->initialized && atomic_read(&psy->use_cnt) > 0))',
+                   '\n\tif (!sprd_fgu_probe_is_ready')
+    fgu_error = between(core, '\tif (IS_ERR(data->fgu_info))', '\n#elif')
+    assert core.count(gate) == 2  # get_property and set_property
+    prelude = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <errno.h>
+#include <string.h>
+#define EPROBE_DEFER 517
+#define ERR_PTR(n) ((void *)(intptr_t)(n))
+#define PTR_ERR(p) ((long)(intptr_t)(p))
+#define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
+#define unlikely(n) (n)
+#define atomic_read(p) (*(p))
+struct device_node { const char *compatible[4]; } node;
+struct device { struct device_node *of_node; } device={&node};
+struct of_device_id { const char *compatible; const void *data; };
+static const int ump96xx_fgu_info=9620;
+struct sprd_fgu_info { const void *pdata; } gauge;
+static const struct of_device_id *of_match_node(const struct of_device_id *table,
+                                              struct device_node *np) {
+ if(!np)return 0;
+ for(;table->compatible;table++)
+  for(int i=0;i<4&&np->compatible[i];i++)
+   if(!strcmp(table->compatible,np->compatible[i]))return table;
+ return 0;
+}
+static int dev_err_probe(struct device *dev,int error,const char *message,...) {
+ (void)dev;(void)message;return error;
+}
+struct power_supply { bool initialized; int use_cnt; } supply;
+struct charger_desc { int cap,temperature; } desc;
+struct charger_manager { struct device *dev; struct charger_desc *desc; } manager={&device,&desc};
+static int puts,provider_error;
+static void power_supply_put(struct power_supply *p){assert(p==&supply);puts++;}
+static int get_boot_cap(struct charger_manager *cm,int *cap){assert(cm==&manager);*cap=730;return provider_error;}
+static int cm_get_battery_temperature(struct charger_manager *cm,int *temp){assert(cm==&manager);*temp=250;return provider_error;}
+'''
+    code = prelude + table + '\nstatic void *match_fgu(struct device *dev){\n'
+    code += 'struct sprd_fgu_info *info=&gauge;const struct of_device_id *match;\n'+match+'\nreturn info;}\n'
+    code += 'static int supply_ready(struct power_supply *psy){\n'+gate+'\nreturn 0;}\n'
+    code += ('static int hardware_error(int error){struct {struct device *dev;void *fgu_info;} gauge_error={&device,error?ERR_PTR(error):&gauge},*data=&gauge_error;\n'
+             + fgu_error+'\nreturn 0;}\n')
+    for label, call, ending in (
+        ('capacity', 'get_boot_cap(cm, &cm->desc->cap)', '\n\tif (device_property_read_bool'),
+        ('temperature', 'cm_get_battery_temperature(cm, &cm->desc->temperature)', '\n\tcur_time ='),
+    ):
+        body = between(cm, '\tret = '+call+';', ending)
+        code += f'static int probe_{label}(void){{struct charger_manager *cm=&manager;struct power_supply *fuel_gauge=&supply;int ret;\n'+body+'\nreturn 0;}\n'
+    code += r'''
+int main(void) {
+ const char *known="sprd,ump9620-fgu";
+ node=(struct device_node){{known,0}};
+ assert(match_fgu(&device)==&gauge&&gauge.pdata==&ump96xx_fgu_info);
+ node=(struct device_node){{"vendor,batch-specific-fgu",known,0}};
+ assert(match_fgu(&device)==&gauge);
+ node=(struct device_node){{"vendor,unknown-fgu",0}};
+ assert(PTR_ERR(match_fgu(&device))==-ENODATA);
+ node=(struct device_node){{0}};
+ assert(PTR_ERR(match_fgu(&device))==-ENODATA);
+ device.of_node=0;
+ assert(PTR_ERR(match_fgu(&device))==-ENODATA);
+ supply=(struct power_supply){false,1};
+ assert(supply_ready(&supply)==-EAGAIN);
+ supply.initialized=true;
+ assert(supply_ready(&supply)==0);
+ int errors[]={-EAGAIN,-EPROBE_DEFER,-EINVAL,-EIO,-ENODEV,-ENOMEM};
+ for(unsigned i=0;i<sizeof(errors)/sizeof(errors[0]);i++) {
+  provider_error=errors[i];puts=0;
+  assert(hardware_error(provider_error)==provider_error);
+  int expected=provider_error==-EAGAIN?-EPROBE_DEFER:provider_error;
+  assert(probe_capacity()==expected&&puts==1);
+  assert(probe_temperature()==expected&&puts==2);
+ }
+ provider_error=0;puts=0;
+ assert(hardware_error(0)==0&&hardware_error(-ENODATA)==-ENODATA);
+ assert(probe_capacity()==0&&probe_temperature()==0&&!puts);
+ assert(desc.cap==730&&desc.temperature==250);
+ return 0;
+}
+'''
+    source=root/'provider.c';binary=root/'provider'
+    source.write_text(code)
+    subprocess.run(['gcc','-Wall','-Wextra','-Werror','-std=gnu11','-fsanitize=undefined',
+                    str(source),'-o',str(binary)],check=True)
+    subprocess.run([str(binary)],check=True)
+    print('PASS: DT fallback, unknown FGU rejection, not-ready supply and CM reference/error handling')
+
+
 def branches(core, hardware, charger, name):
     regmap = between(core, '\tdata->regmap = sprd_power_regmap(', '\n\tdata->use_typec_extcon')
-    hw = between(hardware, '\tinfo->regmap = sprd_power_regmap(', '\n\tret = of_property_read_string_index')
+    hw = between(hardware, '\tinfo->regmap = sprd_power_regmap(', '\n\t/* Honor the full DT compatible list')
     result = 'static int core_regmap(struct device *dev){struct sprd_fgu_data *data=&gauge;\n'+regmap+'\nreturn 0;}\n'
     result += 'static void *hw_regmap(struct device *dev){struct sprd_fgu_hw *info=&hardware;\n'+hw+'\nreturn info;}\n'
     specs = [('gpio','gpiod','\n\tret = gpiod_get_value_cansleep'),
@@ -148,7 +245,8 @@ def main():
     parser.add_argument('--objects',type=Path,help='Compile changed C with this existing matching kernel object tree')
     args=parser.parse_args()
     original=args.kernel/'drivers/power/supply'
-    names=[CORE,HARDWARE]+[n for n in ('bq2560x-charger.c','aw32257_charger.c') if (original/n).is_file()]
+    chargers=[n for n in ('bq2560x-charger.c','aw32257_charger.c') if (original/n).is_file()]
+    names=[CORE,HARDWARE,'charger-manager.c',*chargers]
     with tempfile.TemporaryDirectory(prefix='e5-power-probe-') as temporary:
         root=Path(temporary);directory=root/'drivers/power/supply';directory.mkdir(parents=True)
         before={name:(original/name).read_text() for name in names}
@@ -187,7 +285,7 @@ def main():
         for n in ('device.h','err.h','errno.h','of.h','of_platform.h','platform_device.h','regmap.h'):
             (inc/n).write_text('')
         (inc/'errno.h').write_text('#include_next <linux/errno.h>\n')
-        for name in names[2:]:
+        for name in chargers:
             source=after[name].decode()
             prefix='bq2560x_charger_probe' if name.startswith('bq') else 'aw32257_probe'
             # Match/ID checks before PMIC acquisition must also stay intact.
@@ -208,6 +306,7 @@ def main():
             subprocess.run(['gcc','-Wall','-Wextra','-Werror','-std=gnu11','-O2',
                 '-I',str(root),'-I',str(directory),str(program),'-o',str(binary)],check=True)
             subprocess.run([str(binary)],check=True)
+        provider_checks(root, after)
         if args.objects:
             # Small external-module fixture, reusing the registered source,
             # config and generated headers. No new full tree or deliverable.

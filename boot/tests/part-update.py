@@ -94,6 +94,12 @@ class OfflineUpdate(unittest.TestCase):
                 ('proc/self/mountinfo',''),
             ):
                 path = root / path; path.parent.mkdir(parents=True,exist_ok=True); path.write_text(content)
+            if not raw_card:
+                entry=root/f'sys/class/block/{name}'
+                backing=root/f'sys/devices/block/{disk}/{name}'
+                backing.parent.mkdir(parents=True)
+                entry.rename(backing); entry.symlink_to(backing)
+                (backing/'partition').write_text('1\n')
             if fault == 'cid': (root / f'sys/class/block/{disk}/device/cid').write_text('wrong')
             if fault == 'ram': (root / 'proc/meminfo').write_text('MemAvailable: 100 kB\n')
             if fault == 'busy': (root / 'proc/self/mountinfo').write_text('1 2 179:71 / /old rw - ext4 device rw\n')
@@ -109,7 +115,7 @@ class OfflineUpdate(unittest.TestCase):
             nv_helpers=root/'nv-preserve.sh'
             nv_helpers.write_text((TOP/'boot/nv-preserve.sh').read_text().replace('/etc/nv-persistence.py',str(nv_source))
                                   .replace('/run/nv-preserve.err',str(root/'nv-preserve.err')))
-            code = SOURCE
+            code = (TOP/'boot/storage.sh').read_text()+'\n'+SOURCE
             for a,b in (('/part-update-old',str(mountpoint)),('/part-update-new',str(new)),('/run/',str(ram)+'/'),
                 ('/proc/',str(root / 'proc')+'/'),('/sys/',str(root / 'sys')+'/'),('/dev/',str(root / 'dev')+'/'),
                 ('/etc/part-progress.sh',str(helpers)),('/etc/nv-preserve.sh',str(nv_helpers)),('/etc/misc-bc-slot-b-trial.bin',str(root / 'bc'))):
