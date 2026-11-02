@@ -2,10 +2,10 @@
 import importlib.machinery
 import importlib.util
 import json
-import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 SOURCE = Path(__file__).resolve().parents[2] / 'openwrt/luci-app-t551m/root/usr/libexec/unisoc-modem/cpu-control'
@@ -284,24 +284,23 @@ class VoltageCapabilityTest(unittest.TestCase):
         checker=self.root/'usr/libexec/unisoc-modem/sml-voltage-check'
         checker.parent.mkdir(parents=True);checker.write_bytes(b'native helper boundary fixture')
         self.images=[b'audited firmware fixture a',b'audited firmware fixture b']
-        hashes=frozenset(hashlib.sha256(data).hexdigest() for data in self.images)
-        for name in ('VERIFIED_VOLTAGE_FIRMWARE','VERIFIED_UMS9620_VOLTAGE_FIRMWARE'):
-            patcher=patch.object(module,name,hashes);patcher.start();self.addCleanup(patcher.stop)
+        patcher=patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=0))
+        patcher.start();self.addCleanup(patcher.stop)
         for slot,device,data in (('a','mmcblk0p6',self.images[0]),('b','mmcblk0p7',self.images[1])):
             node=self.root/'sys/class/block'/device/'uevent';node.parent.mkdir(parents=True)
             node.write_text('PARTNAME=sml_'+slot+'\n')
             node=self.root/'dev'/device;node.parent.mkdir(exist_ok=True);node.write_bytes(data)
 
-    def test_every_adapted_profile_uses_whitelist_fast_path_with_different_slot_versions(self):
+    def test_every_profile_checks_both_slot_algorithms_with_different_versions(self):
         profile=self.root/'etc/e5/device-profile';profile.parent.mkdir(parents=True)
         for name in ('e5','t551m','m8','t512n','yuanhang41s','k1','lym10k','changxing60','y60'):
             profile.write_text(name)
             for soc in ('sprd,ums9620','sprd,ums9621'):
                 self.compatible.write_bytes(('sprd,ums512-base\0'+soc+'\0').encode())
                 (self.control.runtime/module.VOLTAGE_CAPABILITY_CACHE).unlink(missing_ok=True)
-                with patch.object(module.subprocess,'run') as run:
+                with patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=0)) as run:
                     self.assertTrue(self.control.voltage_supported(),(name,soc))
-                    run.assert_not_called()
+                    self.assertEqual(run.call_count,2)
 
     def test_unknown_image_uses_algorithm_result_and_not_a_hash_rejection(self):
         data=b'unlisted version'
@@ -309,8 +308,8 @@ class VoltageCapabilityTest(unittest.TestCase):
         from types import SimpleNamespace
         with patch.object(module.subprocess,'run',return_value=SimpleNamespace(returncode=0)) as run:
             self.assertTrue(self.control.voltage_supported())
-            self.assertEqual(run.call_count,1)
-            self.assertEqual(run.call_args.kwargs['input'],data)
+            self.assertEqual(run.call_count,2)
+            self.assertIn(data,[call.kwargs['input'] for call in run.call_args_list])
             self.assertEqual(run.call_args.args[0][0],str(self.root/'usr/libexec/unisoc-modem/sml-voltage-check'))
         self.assertEqual((self.root/'dev/mmcblk0p7').read_bytes(),data)
 
@@ -338,7 +337,7 @@ class VoltageCapabilityTest(unittest.TestCase):
 
     def test_old_negative_caches_are_ignored(self):
         self.control.runtime.mkdir(parents=True)
-        for name in ('voltage-supported','voltage-supported-v6','voltage-supported-v7','voltage-supported-v8'):
+        for name in ('voltage-supported','voltage-supported-v6','voltage-supported-v7','voltage-supported-v8','voltage-supported-v9'):
             (self.control.runtime/name).write_text('0')
         self.assertTrue(self.control.voltage_supported())
 

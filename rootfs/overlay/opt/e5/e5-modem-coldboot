@@ -7,76 +7,14 @@ charger boot that skips NR/CH, bypass that predicate and select only LOAD_CP
 radio NV, boot partition, boot-control or original executable is modified.
 """
 import errno
-import hashlib
 import os
 from pathlib import Path
 import re
-import struct
+import subprocess
 import sys
 import tempfile
 
-EDITS = (
-    # mov w19,w0 -> mov w19,wzr: PM being online does not imply CP online.
-    (0xD18C, bytes.fromhex('f303002a'), bytes.fromhex('f3031f2a')),
-    # mov w0,63 -> mov w0,34: LOAD_CP | LOAD_CH; no PM stop/load operations.
-    (0xD1D0, bytes.fromhex('e0078052'), bytes.fromhex('40048052')),
-)
-T551M_EDITS = (
-    # Thumb, VA 0xa6a2/file 0x96a2: mov r4,r0 -> movs r4,0.
-    # modem_has_been_boot() tests /dev/sctl_pm before the modem=shutdown gate.
-    (0x96A2, bytes.fromhex('0446'), bytes.fromhex('0024')),
-    # VA 0xa6c0: movs r0,63 -> movs r0,34 before load_modem_img().
-    (0x96C0, bytes.fromhex('3f20'), bytes.fromhex('2220')),
-)
-K1_EDITS = (
-    # AngelCare.K1.YUAN.YD.T1.0 ARM64, file offsets equal VAs in this segment.
-    # 0xcf08 calls modem_has_been_boot() (0xc650, checks /dev/sctl_pm).
-    (0xCF0C, bytes.fromhex('f303002a'), bytes.fromhex('f3031f2a')),
-    # 0xcf54 calls load_modem_img(0xa290): bit1 NR/CP, bit5 CH; bit0 PM
-    # is excluded from both its stop and load/start branches.
-    (0xCF50, bytes.fromhex('e0078052'), bytes.fromhex('40048052')),
-)
-YH41S_EDITS = (
-    # ZTE 7546N/P720S11 stock ARM64. 0xd1b8 calls the 0xc900 boot
-    # predicate (/dev/sctl_pm); PM being alive does not mean NR/CH is alive.
-    (0xD1BC, bytes.fromhex('f303002a'), bytes.fromhex('f3031f2a')),
-    # 0xd204 calls load_modem_img(0xa540). Bits 1 and 5 load NR/CH;
-    # bit0 stops/loads PM and bit3 also enters the PM/CP stop path: omit both.
-    (0xD200, bytes.fromhex('e0078052'), bytes.fromhex('40048052')),
-)
-# Exact recipient builds only: ELF class, machine, and instruction edits.
-PROFILES = {
-    'a0dfdb32b616671febdebe23efce10efd3f9abc0cbcf3b19ff22d7c8ebb0a5e2':
-        (2, 183, EDITS),
-    '317eb996768a1978aa6b983a0d856cee47458b3bc72fa17ff88bc97f9df52109':
-        (1, 40, T551M_EDITS),
-    # LYM-10K-V32, stock 32-bit loader: identical predicate/call sites.
-    # VA 0xa020 opens /dev/sctl_pm (literal 0x210d); main saves that
-    # result at file 0x96a2, and calls load_modem_img(0x86b4) at VA
-    # 0xa6c2. Keep PM untouched when starting NR/CH after charge-only boot.
-    '94b1a0bc5df7726852dfbec16a2c8ea1cb58b22a172951869e6c74ed969c1c0a':
-        (1, 40, T551M_EDITS),
-    '43a3bc8c4730b87431d4fc8d90a3652b2458ef8bc9f59772685d4016cc7819a3':
-        (2, 183, K1_EDITS),
-    'e76433bb853bfc5557e6397ab568666cabe8acf0ef12056783b822564df0dd75':
-        (2, 183, YH41S_EDITS),
-}
-
-
-def selective_copy(data):
-    digest = hashlib.sha256(data).hexdigest()
-    if digest not in PROFILES:
-        raise ValueError('unsupported modem_control build; SHA-256=' + digest)
-    elf_class, machine, edits = PROFILES[digest]
-    if (data[:6] != b'\x7fELF' + bytes((elf_class, 1))
-            or struct.unpack_from('<H', data, 18)[0] != machine):
-        raise ValueError('modem_control ELF architecture does not match profile')
-    result = bytearray(data)
-    for offset, before, after in edits:
-        if data[offset:offset + len(before)] != before:
-            raise ValueError(f'modem_control instruction mismatch at {offset:#x}')
-        result[offset:offset + len(before)] = after
-    return bytes(result)
+PATCHER = '/opt/e5/modem-loader-patch'
 
 
 def requires_cold_start(commandline, port='/dev/stty_nr1'):
@@ -98,7 +36,6 @@ def prepare(android, commandline):
     if not requires_cold_start(commandline):
         return '/vendor/bin/modem_control'
     source = android / 'vendor/bin/modem_control'
-    patched = selective_copy(source.read_bytes())
     target = android / 'tmp/e5-coldboot'
     target.mkdir(parents=True, exist_ok=True)
     if target.is_symlink():
@@ -106,11 +43,13 @@ def prepare(android, commandline):
     target.chmod(0o755)
     descriptor, name = tempfile.mkstemp(prefix='.modem_control.', dir=target)
     try:
-        with os.fdopen(descriptor, 'wb') as stream:
-            stream.write(patched)
-            stream.flush()
-            os.fsync(stream.fileno())
-            os.fchmod(stream.fileno(), 0o755)
+        os.close(descriptor)
+        result = subprocess.run([PATCHER, 'patch', str(source), name],
+                                capture_output=True, text=True, timeout=15)
+        if result.returncode:
+            raise ValueError(result.stderr.strip() or 'loader ABI could not be verified')
+        # The helper verifies the complete copy. Publish only after it succeeds.
+        os.chmod(name, 0o755)
         os.replace(name, target / 'modem_control')
     finally:
         if os.path.exists(name):os.unlink(name)
@@ -122,6 +61,6 @@ if __name__ == '__main__':
         if len(sys.argv) != 3:
             raise ValueError('usage: e5-modem-coldboot ANDROID_ROOT CMDLINE_FILE')
         print(prepare(Path(sys.argv[1]), Path(sys.argv[2]).read_text().replace('\0', ' ')))
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
         print('cold modem startup refused: ' + str(error), file=sys.stderr)
         sys.exit(1)

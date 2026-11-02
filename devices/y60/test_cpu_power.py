@@ -46,12 +46,10 @@ class StockVoltage(unittest.TestCase):
         self.put('usr/libexec/unisoc-modem/sml-voltage-check', self.checker.read_bytes())
         (self.root/'usr/libexec/unisoc-modem/sml-voltage-check').chmod(0o755)
         # Default synthetic data exercise API boundaries; supplied original SML
-        # takes the actual production whitelist or native algorithm path.
+        # takes the actual native algorithm path.
         if not os.environ.get('Y60_SML_FIRST'):
-            globals_=Control.voltage_supported.__globals__
-            p=patch.dict(globals_, VERIFIED_UMS9620_VOLTAGE_FIRMWARE=frozenset(
-                hashlib.sha256(image).hexdigest() for image in self.images))
-            p.start();self.addCleanup(p.stop)
+            self.put('usr/libexec/unisoc-modem/sml-voltage-check', '#!/bin/sh\nexit 0\n')
+            (self.root/'usr/libexec/unisoc-modem/sml-voltage-check').chmod(0o755)
         for domain, name in enumerate(('policy0', 'policy4', 'policy7')):
             # Synthetic supported limits isolate the firmware/persistence path.
             for key, value in {
@@ -101,12 +99,17 @@ class StockVoltage(unittest.TestCase):
         visible = self.control.cpu
         hidden = visible.with_name('hidden-test-policies')
         visible.rename(hidden)
+        real_run = subprocess.run
+        loaded = []
         def load(args, **kwargs):
+            if args[0] != 'insmod':
+                return real_run(args, **kwargs)
             self.assertEqual(args[:2], ['insmod', str(self.root/'lib/modules/test-y60/sprd-cpufreq-v2-driver.ko')])
+            loaded.append(args)
             hidden.rename(visible)
         with patch.object(Control.load_driver.__globals__['subprocess'], 'run', side_effect=load) as run:
             self.control.boot()
-            return run.call_args.args[0][-1]
+            return loaded[-1][-1]
 
     def test_saved_y60_offsets_reach_driver_only_at_normal_boot(self):
         self.control.apply({'policies':[{'id':'policy4','voltage_next':-6250}]})

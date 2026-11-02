@@ -1,58 +1,18 @@
 #!/usr/bin/python3
 """CPU policies and passive CPU cooling, shared by LuCI and the info screen."""
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import sys
 import subprocess
-import struct
 import time
 
 
-# Whole 1 MiB SML images, including the vendor header. Both implement the
-# signed DVFS_INIT domain-byte ABI; see devices/t551m/cpufreq/README.md.
-VERIFIED_VOLTAGE_FIRMWARE = frozenset({
-    'c3ab5b763cbcfd09d1a4e8f598ed703c739a2081682f8278276dba4581cd1c44',
-    '51ab807ce7c13795e134031b81f6f6b904da38a771c166ce4e279f93dac72890',
-    # T512N/PB8 512NCA05: decoder, paired CPU/SRAM tables and selector
-    # arithmetic verified from this device's SML; devices/t512n/CPU-POWER.zh-CN.md.
-    'b0beb84a18b4d823bf62ec1ea36a46b960b5ea0a54433d449d8a007968879075',
-})
-VERIFIED_UMS9620_VOLTAGE_FIRMWARE = frozenset({
-    '31425dab4aca8450757ac4207de419d06643b7204776fc7e8da5aab1d68814df',
-    # ZTE 7546N/P720S11 20240508.225723: own SML decoder, paired
-    # tables and selector arithmetic; devices/yuanhang41s/CPU-POWER.zh-CN.md.
-    'cdfd5fb2186f00ab18e6aca37ee54053704a1e6252dc415aeed190d6892db71b',
-    # AngelCare.K1.YUAN.YD.T1.0: DVFS code/tables match the verified M8
-    # payload byte-for-byte; devices/k1/CPU-POWER.zh-CN.md.
-    'efc2e6cf3a83a1dbbedecbea12673a7320520632b7b3f59c9072276f9b24d5eb',
-    # Y60 CP23NV3 20240108/20240304: complete DHTB executable/data payload
-    # identical to audited K1; devices/y60/CPU-POWER.zh-CN.md. Keep separate
-    # complete-partition hashes; mixed/unknown slots are still rejected.
-    '7755b6ae0282e308eab179710401bfc2a16f86e3658936cdf79ee581fda0a3a9',
-    '355cf12fa6fa336c013ac94ace426bceb094ed5c27b95995e7ba1628c6d0348b',
-    # ZTE 7552N/P720S20 20240919.212928: recipient DVFS_INIT decoder,
-    # paired table paths and 3.125 mV selector; devices/changxing60/CPU-POWER.zh-CN.md.
-    'de9b51aa6381d0af921ae5e1ba6499aff8e99e88c92c53259d62a9106c29553a',
-})
-# LYM's factory export is one complete signed DHTB image, not a padded
-# partition dump. Identify the entire image (header + code/data + certificate),
-# bounded by the factory header. Never accept just a code fragment or a model
-# name. Trailing partition padding is not part of this executable image.
-VERIFIED_SIZED_VOLTAGE_FIRMWARE = {
-    'lym10k': {
-        'compatible': 'sprd,ums9621',
-        'size': 0x26628,
-        'payload_size': 0x25f90,
-        'sha256': '25447f40532d7dcb2b86b343ae9cfc8fb14f8384011089d68d268f88c31e04c6',
-    },
-}
-# Whitelist hits are a fast path. A new signed image is checked against the
-# actual DVFS_INIT/decoder/selector call chain by the standalone native helper.
-VOLTAGE_CAPABILITY_CACHE = 'voltage-supported-v9'
+# Every firmware is checked against its actual DVFS_INIT/decoder/selector ABI,
+# including DHTB integrity, rather than a whole-image or sized-image hash list.
+VOLTAGE_CAPABILITY_CACHE = 'voltage-supported-v10'
 VOLTAGE_SOC_UNSUPPORTED = 'CPU voltage adjustment is not supported on this SoC'
 VOLTAGE_DRIVER_UNSUPPORTED = 'CPU voltage interface is missing from this kernel'
 VOLTAGE_NOT_READY = 'SML partitions are not ready; refresh after initialization'
@@ -72,21 +32,6 @@ def voltage_module_supported(path):
     return (len(data) >= 20 and data[:6] == b'\x7fELF\x02\x01' and
             int.from_bytes(data[18:20], 'little') == 183 and
             re.search(rb'\x00parm=voltage_offset_uv:[^\x00]+\x00', data) is not None)
-
-
-def sized_voltage_firmware(data, expected):
-    """Recognize a complete audited DHTB image inside its source partition."""
-    size = expected['size']
-    if not 512 <= size <= len(data) <= 1024 * 1024:
-        return None
-    if data[:8] != b'DHTB\x01\x00\x00\x00':
-        return None
-    if (struct.unpack_from('<I', data, 0x30)[0] != expected['payload_size'] or
-            struct.unpack_from('<I', data, 0x50)[0] != size or
-            not 0 < expected['payload_size'] <= size - 512):
-        return None
-    digest = hashlib.sha256(data[:size]).hexdigest()
-    return digest if digest == expected['sha256'] else None
 
 
 def read(path, default=''):
@@ -135,7 +80,7 @@ class Control:
         return self.root / 'lib/modules' / release / 'sprd-cpufreq-v2-driver.ko'
 
     def voltage_supported(self):
-        """Known images use a fast path; other builds must expose the same ABI.
+        """Recognize each slot's actual ABI independently of firmware build ID.
 
         Slots may have different versions. Check each one's compatibility,
         never require byte-for-byte image identity or rewrite either slot.
@@ -152,10 +97,6 @@ class Control:
         if cached == '1' or cached.startswith('0:'):
             self.voltage_unavailable_reason = None if cached == '1' else cached[2:]
             return cached == '1'
-        verified = VERIFIED_UMS9620_VOLTAGE_FIRMWARE if 'sprd,ums9620' in compatibles else VERIFIED_VOLTAGE_FIRMWARE
-        sized = VERIFIED_SIZED_VOLTAGE_FIRMWARE.get(read(self.root/'etc/e5/device-profile'))
-        if sized and sized['compatible'] not in compatibles:
-            sized = None
         checker = self.root/'usr/libexec/unisoc-modem/sml-voltage-check'
         results = {}
         failed = False
@@ -173,24 +114,19 @@ class Control:
             except OSError:
                 failed = True
                 continue
-            known = (hashlib.sha256(data).hexdigest() in verified or
-                     bool(sized and sized_voltage_firmware(data,sized)))
-            if known:
-                results[name] = True
-            else:
-                if not checker.is_file():
+            if not checker.is_file():
+                self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
+                return False
+            try:
+                result = subprocess.run([str(checker),'-'],input=data,capture_output=True,timeout=3)
+                if result.returncode not in (0, 1):
                     self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
                     return False
-                try:
-                    result = subprocess.run([str(checker),'-'],input=data,capture_output=True,timeout=3)
-                    if result.returncode not in (0, 1):
-                        self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
-                        return False
-                    results[name] = result.returncode == 0
-                except (OSError,subprocess.SubprocessError):
-                    # Missing/incomplete helper after a hot update is transient.
-                    self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
-                    return False
+                results[name] = result.returncode == 0
+            except (OSError,subprocess.SubprocessError):
+                # Missing/incomplete helper after a hot update is transient.
+                self.voltage_unavailable_reason = VOLTAGE_CHECKER_UNAVAILABLE
+                return False
         reason = None
         if len(results)!=2 or failed:
             self.voltage_unavailable_reason = VOLTAGE_READ_FAILED if failed else VOLTAGE_NOT_READY

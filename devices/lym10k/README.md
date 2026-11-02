@@ -34,7 +34,8 @@ Android 标识：`LYM-10K`，device `RY5G`，SoC 属性 `T765`，原厂 DT 为 U
 内核显式启用 `COMPAT` / `COMPAT_32BIT_TIME`，用户态沿用按 ELF class 选择
 `/system/bin/linker` 和 `lib` 的公共加载器，不改 AT 所有权、拨号顺序或开机回放。
 `modem_control` SHA256 为 `94b1a0bc5df7726852dfbec16a2c8ea1cb58b22a172951869e6c74ed969c1c0a`。
-充电关机后长按开机的 NR/CH-only 副本已登记本机精确哈希：
+充电关机后长按开机的 NR/CH-only 副本原先按此样本核实；
+2026-11-02 已改为实际 ELF／指令协议定位，不再绑定该固件哈希：
 VA 0xa020 通过原厂字符串 0x210d 检查 `/dev/sctl_pm`，VA 0xa69e 调用它；
 文件 0x96a2 的 `mov r4,r0` 与 0x96c0 的 `movs r0,63` 分别替换为清除判定和
 仅选择 CP/CH 的 34。加载函数 VA 0x86b4 的掩码分支与既有 T551M 路径相同。

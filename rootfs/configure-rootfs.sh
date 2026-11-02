@@ -30,6 +30,9 @@ done
 
 # Windows checkouts may not retain the new helper's executable bit.
 chmod 755 "$ROOT/opt/e5/e5-data-priority"
+MODEM_LOADER_PATCH=$(python3 "$HERE/../devices/common/build-modem-loader.py")
+cp "$MODEM_LOADER_PATCH" "$ROOT/opt/e5/modem-loader-patch"
+chmod 755 "$ROOT/opt/e5/modem-loader-patch"
 
 echo "=== locale ==="
 bash "$HERE/e5-chroot.sh" '

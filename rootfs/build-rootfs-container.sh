@@ -29,6 +29,12 @@ set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TOP="$(cd "$HERE/.." && pwd)"
 
+# Reuse the host's existing static-helper cache. The Debian assembly container
+# intentionally has no cross compiler; configure will verify/reuse this input.
+case " ${*:-all} " in
+    *" all "*|*" configure "*) python3 "$TOP/devices/common/build-modem-loader.py" >/dev/null ;;
+esac
+
 # The tree itself lives in a named Docker volume mounted over work/rootfs-build,
 # not on the macOS bind mount: that one does not store file groups (measured:
 # unix_chkpwd root:shadow came back root:root), so every dpkg-installed file with

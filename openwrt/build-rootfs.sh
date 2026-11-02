@@ -102,6 +102,7 @@ FIRMWARE=${E5_FIRMWARE:-$TOP/rootfs/overlay/lib/firmware}
 ANDROID=${E5_ANDROID_SUBSET:-$TOP/work/android-subset}
 KBUILD=${E5_KBUILD:-$TOP/out_linux}
 mkdir -p "$WORK" "$OUT"
+MODEM_LOADER_PATCH=$(python3 "$TOP/devices/common/build-modem-loader.py")
 python3 "$TOP/tools/openwrt-package-state.py" check "$VER"
 # /dev/sd* also matches Unisoc communication channels. Install only the APK
 # whose probe filters device types before opening them (shared by all boards).
@@ -279,6 +280,7 @@ VERSION=$(python3 "$TOP/tools/release-identity.py" --profile e5 \
 
 docker run --rm --platform linux/arm64 \
     -v "$HERE/overlay":/in/overlay:ro -v "$TOP/rootfs/overlay/opt/e5":/in/opt-e5:ro \
+    -v "$MODEM_LOADER_PATCH":/in/modem-loader-patch:ro \
     -v "$WORK/release.json":/in/release.json:ro \
     -v "$TOP":/in/feature-source:ro -e E5_FEATURES="$FEATURES" -e E5_UI_CACHE=/tmp/e5-ui-cache \
     -v "$OUT":/in/apk:ro -v "$BUSYBOX":/in/busybox:ro -v "$WORK/logdw":/in/logdw:ro \
@@ -403,6 +405,8 @@ fi
 for f in vendor-start.sh android-import-perms.sh e5-modem-coldboot android-run node-perms.sh regdb-load.sh gadget-guard.sh usb-watch.sh e5-next-boot e5-os e5-sd-registry e5-at e5-data-priority e5-audio-dsp e5-call-audio.py; do
     cp /in/opt-e5/$f $R/opt/e5/$f; chmod 755 $R/opt/e5/$f
 done
+cp /in/modem-loader-patch $R/opt/e5/modem-loader-patch
+chmod 755 $R/opt/e5/modem-loader-patch
 cp /in/logdw $R/opt/e5/bin/logdw && chmod 755 $R/opt/e5/bin/logdw
 cp /in/e5-vibrate $R/usr/bin/e5-vibrate && chmod 755 $R/usr/bin/e5-vibrate
 cp /in/e5-ctl-raw $R/opt/e5/e5-ctl-raw && chmod 755 $R/opt/e5/e5-ctl-raw

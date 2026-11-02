@@ -114,7 +114,7 @@ netifd、hostapd 或屏幕浏览器进程。实际帧缓冲截图显示实时 98
 T551M 的 `modem_has_been_boot()` 先检查 `/dev/sctl_pm`，因此原始 loader 会误判
 基带已启动；原 E5 冷启动辅助程序又只支持 ARM64，导致 T551M 一直退出重试。
 
-共享 `e5-modem-coldboot` 现在支持本机 ARM32/Thumb loader，SHA-256 必须为
+共享 `e5-modem-coldboot` 支持本机 ARM32/Thumb loader；当时取样文件的 SHA-256 为
 `317eb996768a1978aa6b983a0d856cee47458b3bc72fa17ff88bc97f9df52109`。
 从 `.gnu_debugdata` 符号和反汇编核对：`modem_has_been_boot` 位于 VA `0xa020`，
 `load_modem_img` 位于 `0x86b4`。只在充电启动且 CP 通道不可用时，生成临时副本：
@@ -123,7 +123,9 @@ T551M 的 `modem_has_been_boot()` 先检查 `/dev/sctl_pm`，因此原始 loader
 - 文件偏移 `0x96c0`（VA `0xa6c0`）：`movs r0,63` 改为 `movs r0,34`，仅加载 NR/CH。
 
 保留 `modem=shutdown` 判断，跳过 PM 的停止、加载和启动，原 loader 文件和原始 NV
-均不修改。未知哈希、架构或指令仍拒绝启动。正常启动及 CP 已在线时使用原 loader。
+均不修改。2026-11-02 已取消哈希白名单与固定偏移，按本机 ELF、指令、
+memcmp 的 PLT 重定位和加载掩码自动定位；正常启动及 CP 已在线时使用原 loader。
+见 [公共识别规则](../../docs/MODEM-LOADER-ABI-20261102.zh-CN.md)。
 测试：`python3 rootfs/tests/modem-coldboot.py`（两种架构共 10 项）。
 
 2026-10-08 实机验证：先在已经出现“无模组”的 charger 启动中重启厂商服务，
