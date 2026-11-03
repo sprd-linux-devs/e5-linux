@@ -1,7 +1,6 @@
 'use strict';
 'require view';
 'require mu300.common as M';
-'require mu300.charge as Charge';
 'require mu300.network-performance as NetworkPerformance';
 
 return view.extend({
@@ -64,7 +63,6 @@ return view.extend({
 		this.state = state || {};
 		this.wire();
 		this.paint();
-		Charge.mount(root);
 		this._networkPerformance = NetworkPerformance.mount(root);
 		return root;
 	},

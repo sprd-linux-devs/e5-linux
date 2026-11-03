@@ -292,6 +292,15 @@ def main():
 
 def audit(root, profile, release):
     assert (root / 'etc/e5/device-profile').read_text().strip() == profile
+    assert json.loads((root / 'usr/share/unisoc-battery-history/profile.json').read_text())['family'] == 'e5'
+    for name in ('usr/share/ucode/mu300/battery-history.uc',
+                 'www/luci-static/resources/view/mu300/battery.js'):
+        assert (root / name).is_file(), name
+    for name in ('etc/init.d/unisoc-battery-history', 'usr/libexec/unisoc-modem/battery-history'):
+        assert os.access(root / name, os.X_OK), name
+    assert (root / 'etc/rc.d/S96unisoc-battery-history').is_symlink()
+    assert (root / 'etc/rc.d/K12unisoc-battery-history').is_symlink()
+    assert not (root / 'etc/e5/battery').exists(), 'Device battery history must not ship in releases'
     assert [p.name for p in (root / 'lib/modules').iterdir()] == [release]
     for directory in ('opt/e5/android', 'etc/dropbear', 'etc/ssh', 'root', 'tmp'):
         assert not any((root / directory).iterdir()), directory

@@ -2,6 +2,7 @@
 """Registration recovery must preserve user intent and never create retry loops."""
 from pathlib import Path
 import copy
+import json
 import runpy
 import subprocess
 import unittest
@@ -34,7 +35,8 @@ class Tests(unittest.TestCase):
         def run(args, **kwargs):
             self.commands.append(args)
             return subprocess.CompletedProcess(args, 0, 'unisoc-sipc\n', '')
-        self.patches = [patch.dict(GLOBALS, query=query), patch.object(scope['subprocess'], 'run', run)]
+        self.permission=('0',True)
+        self.patches = [patch.dict(GLOBALS, query=query,roaming_policy=lambda:self.permission), patch.object(scope['subprocess'], 'run', run)]
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
@@ -48,6 +50,33 @@ class Tests(unittest.TestCase):
             self.recovery.evaluate()
         self.assertEqual(self.resumes(), [['ubus', 'call', 'network.interface.wan',
                                           'notify_proto', '{"action":5,"available":true}']])
+
+    def test_roaming_default_off_stops_data_without_radio_reset(self):
+        self.permission=('0',False)
+        self.modem['3gpp']['registration-state']='roaming'
+        self.wan.update(up=True,available=True,errors=[])
+        self.recovery.evaluate()
+        notices=[json.loads(c[-1]) for c in self.resumes()]
+        self.assertEqual(notices,[{'action':3,'error':['ROAMING_DISABLED']},{'action':5,'available':False}])
+        self.commands.clear();self.wan.update(up=False,available=False,errors=[{'code':'ROAMING_DISABLED'}])
+        self.recovery.evaluate();self.assertFalse(self.resumes())
+        self.modem['3gpp']['registration-state']='home'
+        self.recovery.evaluate()
+        self.assertEqual(json.loads(self.resumes()[-1][-1]),{'action':5,'available':True})
+
+    def test_permission_change_recreates_bearer_but_preserves_user_ifdown(self):
+        self.wan.update(up=True,available=True,errors=[])
+        self.recovery.evaluate();self.commands.clear()
+        self.permission=('0',False)
+        self.recovery.evaluate()
+        self.assertEqual(json.loads(self.resumes()[-1][-1]),{'action':5,'available':False})
+        self.commands.clear();self.wan.update(up=False,available=False,autostart=False)
+        self.permission=('0',True);self.recovery.evaluate();self.assertFalse(self.resumes())
+
+    def test_data_sim_switch_does_not_add_second_reconnect(self):
+        self.wan.update(up=True,available=True,errors=[])
+        self.recovery.evaluate();self.commands.clear()
+        self.permission=('1',False);self.recovery.evaluate();self.assertFalse(self.resumes())
 
     def test_data_only_sim_needs_no_ims_or_cs_registration(self):
         for slot in ('1', '2'):

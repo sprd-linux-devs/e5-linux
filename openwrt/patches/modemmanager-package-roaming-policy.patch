@@ -1,0 +1,22 @@
+e5-linux: per-SIM data roaming permission, default off, using MM native bearer policy.
+
+No RF restart or initial EPS change; APN roaming IP protocol stays separate.
+
+--- a/files/lib/netifd/proto/modemmanager.sh
++++ b/files/lib/netifd/proto/modemmanager.sh
+@@ -869,6 +869,15 @@
+ 	echo "starting connection with apn '${apn}'..."
+ 
+ 	# setup allow-roaming parameter
++	# The SIPC policy is per physical data SIM. Other modem plugins retain
++	# their existing WAN option; do not alter registration/IMS/RF here.
++	if [ "$device" = unisoc-sipc ]; then
++		allow_roaming=$(/usr/libexec/unisoc-modem/roaming allow) || {
++			proto_notify_error "$interface" ROAMING_POLICY_UNAVAILABLE
++			return 1
++		}
++	fi
++
+ 	if [ -n "${allow_roaming}" ] && [ "${allow_roaming}" -eq 0 ];then
+ 		allow_roaming="no"
+ 	else

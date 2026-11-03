@@ -1,0 +1,81 @@
+#!/usr/bin/python3
+"""Per-SIM data permission; ModemManager remains the only AT/bearer owner."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def command(args):
+    return subprocess.run(args, capture_output=True, text=True, timeout=5, check=True).stdout
+
+
+def selected():
+    slot = Path(os.environ.get('E5_ROAMING_CARD', '/sys/module/sipc_wwan/parameters/card')).read_text().strip()
+    if slot not in ('0', '1'):
+        raise ValueError('roaming_invalid')
+    return slot
+
+
+def allowed(slot):
+    result = subprocess.run(['uci', '-q', 'get', 'unisoc_modem.main.allow_roaming' + slot],
+                            capture_output=True, text=True, timeout=5)
+    if result.returncode not in (0, 1):
+        raise ValueError('roaming_read_failed')
+    return result.stdout.strip() == '1'
+
+
+def run(mode, data):
+    if mode in ('allow', 'policy'):
+        slot = selected()
+        return ('%s ' % slot if mode == 'policy' else '') + str(int(allowed(slot)))
+    slot = data.get('slot') if isinstance(data, dict) else None
+    if slot not in ('0', '1'):
+        raise ValueError('roaming_invalid')
+    if mode == 'set':
+        value = data.get('enabled')
+        if value not in ('0', '1'):
+            raise ValueError('roaming_invalid')
+        command(['uci', 'set', 'unisoc_modem.main.allow_roaming' + slot + '=' + value])
+        command(['uci', 'commit', 'unisoc_modem'])
+        try:
+            command(['ubus', 'send', 'mu300.roaming-policy', json.dumps({'slot': int(slot)})])
+        except (OSError, subprocess.SubprocessError):
+            raise ValueError('roaming_notify_failed') from None
+    elif mode != 'get':
+        raise ValueError('roaming_invalid')
+    roaming = None
+    try:
+        active = selected()
+    except (OSError, ValueError):
+        active = None
+    if slot == active:
+        try:
+            modem = json.loads(command(['mmcli', '-m', 'unisoc-sipc', '-J']))['modem']
+            state = modem.get('3gpp', {}).get('registration-state')
+            if state in ('home', 'roaming'):
+                roaming = int(state == 'roaming')
+        except (KeyError, ValueError, OSError, subprocess.SubprocessError):
+            pass  # Unknown registration is distinct from policy OFF/home.
+    enabled = int(allowed(slot))
+    return {'ok': 1, 'slot': int(slot), 'enabled': enabled, 'roaming': roaming,
+            'blocked': int(roaming == 1 and not enabled)}
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'get'
+    try:
+        data = {} if mode in ('allow', 'policy') else json.loads(sys.stdin.read(4097) or '{}')
+        result = run(mode, data)
+        print(result if isinstance(result, str) else json.dumps(result))
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        if mode in ('allow', 'policy'):
+            return 1
+        code = str(error) if str(error).startswith('roaming_') else 'roaming_save_failed' if mode == 'set' else 'roaming_read_failed'
+        print(json.dumps({'ok': 0, 'error': code}))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

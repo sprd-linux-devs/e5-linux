@@ -162,12 +162,12 @@ def stage(root, profile='t551m'):
         old_cpu_link = root / 'etc/rc.d/S18e5-cpu'
         if old_cpu_link.is_symlink():
             old_cpu_link.unlink()
-        for name, priority in [('e5-mm-state', '30'), ('unisoc-ttl', '97'), ('unisoc-cpu-cores', '99'), ('unisoc-cpu-idle', '99'), ('unisoc-network-performance', '19'), ('e5-cpu', '13'), ('t551m-at', '81'), ('unisoc-modem-ui', '95'), ('unisoc-traffic', '96'), ('unisoc-sms-forward', '96')]:
+        for name, priority in [('e5-mm-state', '30'), ('unisoc-ttl', '97'), ('unisoc-cpu-cores', '99'), ('unisoc-cpu-idle', '99'), ('unisoc-network-performance', '19'), ('e5-cpu', '13'), ('t551m-at', '81'), ('unisoc-modem-ui', '95'), ('unisoc-traffic', '96'), ('unisoc-battery-history', '96'), ('unisoc-sms-forward', '96')]:
             link = root / f'etc/rc.d/S{priority}{name}'
             link.parent.mkdir(parents=True, exist_ok=True)
             if not link.is_symlink():
                 link.symlink_to('../init.d/' + name)
-        for name, priority in [('e5-cpu', '89'), ('t551m-at', '09'), ('unisoc-traffic', '01'), ('unisoc-sms-forward', '01')]:
+        for name, priority in [('e5-cpu', '89'), ('t551m-at', '09'), ('unisoc-traffic', '01'), ('unisoc-battery-history', '12'), ('unisoc-sms-forward', '01')]:
             link = root / f'etc/rc.d/K{priority}{name}'
             if not link.is_symlink():
                 link.symlink_to('../init.d/' + name)

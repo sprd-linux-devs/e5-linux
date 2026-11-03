@@ -36,6 +36,15 @@ def query(args):
     return json.loads(result.stdout)
 
 
+def roaming_policy():
+    result = subprocess.run(['/usr/libexec/unisoc-modem/roaming', 'policy'],
+                            capture_output=True, text=True, timeout=5, check=True)
+    fields = result.stdout.strip().split()
+    if len(fields) != 2 or any(v not in ('0', '1') for v in fields):
+        raise ValueError('Invalid data roaming policy')
+    return fields[0], fields[1] == '1'
+
+
 def radio_key(modem):
     generic, ps = modem.get('generic', {}), modem.get('3gpp', {})
     if generic.get('device') != 'unisoc-sipc' or generic.get('plugin') != 'unisoc':
@@ -87,7 +96,8 @@ def can_resume(interface, packet_ready=True):
         return False
     # Existing PIN, SIM, APN and explicit mode errors still need user action.
     return all(e in ('MM_CONNECT_FAILED', 'MM_3GPP_OPERATOR_REGISTRATION_FAILED',
-                     'MM_INTERFACE_RESTART', 'MM_FAILED_REASON_SIM_MISSING') for e in errors)
+                     'MM_INTERFACE_RESTART', 'MM_FAILED_REASON_SIM_MISSING',
+                     'ROAMING_DISABLED', 'ROAMING_POLICY_CHANGED') for e in errors)
 
 
 class Recovery:
@@ -95,6 +105,7 @@ class Recovery:
         self.key = None
         self.attempted = set()
         self.voice_enable_attempt = None
+        self.roaming = None
 
     def enable_other_sim_services(self):
         # MM represents both SIMs' messaging/voice with one logical object.
@@ -132,6 +143,10 @@ class Recovery:
             self.attempted.clear()
             return
         modem = query(['mmcli', '-m', 'unisoc-sipc', '-J'])['modem']
+        policy = roaming_policy()
+        changed = self.roaming is not None and self.roaming[0] == policy[0] and self.roaming[1] != policy[1]
+        self.roaming = policy
+        denied = not policy[1] and modem.get('3gpp', {}).get('registration-state') == 'roaming'
         packet_key = radio_key(modem)
         key = packet_key or ready_key(modem)
         if key != self.key:
@@ -143,6 +158,20 @@ class Recovery:
         for status in interfaces:
             name = status.get('interface')
             if not name:
+                continue
+            if (status.get('proto') == 'modemmanager' and status.get('autostart') and
+                    status.get('available') and (denied or changed and status.get('up'))):
+                config = subprocess.run(['uci', '-q', 'get', 'network.' + name + '.device'],
+                                        capture_output=True, text=True, timeout=3)
+                if config.stdout.strip() == 'unisoc-sipc':
+                    reason = 'ROAMING_DISABLED' if denied else 'ROAMING_POLICY_CHANGED'
+                    for notice in ({'action': 3, 'error': [reason]}, {'action': 5, 'available': False}):
+                        subprocess.run(['ubus', 'call', 'network.interface.' + name, 'notify_proto',
+                                        json.dumps(notice, separators=(',', ':'))],
+                                       capture_output=True, timeout=10, check=True)
+                continue
+            if denied:
+                self.attempted.discard(name)
                 continue
             if status.get('up'):
                 self.attempted.discard(name)
@@ -182,7 +211,7 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     try:
-        for command in (dbus, ['ubus', 'listen', 'network.interface']):
+        for command in (dbus, ['ubus', 'listen', 'network.interface', 'mu300.roaming-policy']):
             child = subprocess.Popen(command, stdout=subprocess.PIPE,
                                      stderr=subprocess.DEVNULL)
             children.append(child)

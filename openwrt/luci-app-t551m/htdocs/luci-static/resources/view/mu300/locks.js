@@ -3,6 +3,7 @@
 'require poll';
 'require mu300.common as M';
 'require mu300.auto-mode as AutoMode';
+'require mu300.roaming as Roaming';
 
 /* Network settings use verified asynchronous jobs. Each operation reports its
  * own completion/error; bands require command acknowledgement, other fields verify. */
@@ -49,6 +50,7 @@ return view.extend({
   <div class="mud-note">关闭后只停止下次开机回放，已保存的网络、VoLTE 和 VoNR 设置不会被删除。</div>
 </div>
 
+<div id="mud-roaming"></div>
 <div class="mud-sec">
   <h3>VoLTE · VoNR</h3>
   <div class="mud-note">VoLTE 用于 4G 通话，VoNR 用于 5G SA 通话。设置按当前查看的 SIM 保存，并跟随“开机自动应用”。</div>
@@ -123,6 +125,7 @@ return view.extend({
 		this.lockSel = { nr: {}, lte: {} };
 		this.lockCand = { nr: NR_CAND, lte: LTE_CAND };
 		this.Q = function(id) { return root.querySelector('#mud-' + id); };
+		this._roaming = Roaming.mount(this.Q('roaming'));
 		this.loading('serving', true); this.loading('lock', true); this.loading('neigh', true);
 
 		/* 主题化确认框替代浏览器 confirm；确认后再进入实际执行 */
@@ -308,6 +311,7 @@ return view.extend({
 	},
 	unload: function() {
 		this._disposed = true;
+		if (this._roaming) this._roaming.dispose();
 		clearTimeout(this._lockRetry);
 		if (this._poll) poll.remove(this._poll);
 	},
@@ -326,8 +330,10 @@ return view.extend({
 	mergeServing: function() {
 		if (!this.lastSignal) return;
 		var c = {}, meta = this.servingMeta || {}, live = this.lastSignal;
+		if (meta.error && Number(meta.ts) > Number(live.ts)) { this.paintServing(meta); return; }
 		Object.keys(meta).forEach(function(k) { c[k] = meta[k]; });
 		Object.keys(live).forEach(function(k) { c[k] = live[k]; });
+		if (!live.error && live.ts) delete c.error;
 		if (live.partial && (meta.lte || meta.nr)) {
 			['sig', 'sig_src', 'lte', 'nr'].forEach(function(k) { c[k] = meta[k]; });
 		}
@@ -379,7 +385,10 @@ return view.extend({
 			self.lastSignal = live; self._liveLoaded = true;
 			self.loading('serving', false); self.mergeServing();
 		}).catch(function(error) {
-			if (!self._disposed) self.loading('serving', false, error.message || '信号读取失败');
+			if (!self._disposed) {
+				self.lastSignal = null; self.paintServing(null);
+				self.loading('serving', false, '信号读取失败');
+			}
 		}).finally(function() { self._signalRequest = null; });
 		return this._signalRequest;
 	},
@@ -388,7 +397,9 @@ return view.extend({
 		var e = this.Q('srv'); if (!e) return;
 		this.lastCell = c;
 		if (!c || c.error) {
-			this.Q('srv-rat').textContent = c && c.error ? c.error : M.translate('暂无驻网数据');
+			this.Q('srv-rat').textContent = M.translate('暂无驻网数据');
+			this.Q('srv-rsrp').textContent = '--';
+			this.Q('srv-chips').innerHTML = '';
 			e.innerHTML = '';
 			return;
 		}

@@ -43,3 +43,9 @@ msgstr "Access points (APN)"
 
 msgid "基带NV设置"
 msgstr "Baseband NV settings"
+
+msgid "电池与电量"
+msgstr "Battery & power"
+
+msgid "TTL"
+msgstr "TTL"

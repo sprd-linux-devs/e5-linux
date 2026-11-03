@@ -393,7 +393,7 @@ if [ "$REGISTERED" = 1 ]; then
 fi
 
 # "no answer at all" is a modem/daemon problem, not "no signal".
-if [ -z "$CFUN$CEREG$CESQ$SP_LTE$SP_NR$COPS" ]; then
+if [ -z "$CFUN$CEREG$C5GREG$CESQ$SP_LTE$SP_NR$COPS" ]; then
     ERR="AT backend did not answer (radio off, modem restarting, or adapter unavailable)"
     printf '{"ts":%d,"error":%s}\n' "$(now)" "$(qs "$ERR")" > "$SIGF.part" && mv "$SIGF.part" "$SIGF"
     [ "$MODE" = full ] && cp "$SIGF" "$CELL"

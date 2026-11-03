@@ -76,7 +76,8 @@ set -euo pipefail
 # 41: initial activation readiness prototype (superseded by native recovery).
 # 42: keep SIPC startup AT failures on native device reprobe; no separate
 #     command retry timer, no changes to healthy startup or dial backoff.
-E5REV=42
+# 43: per-SIM data roaming permission through the native bearer policy.
+E5REV=43
 VER=${E5_WRT_VER:-25.12.5}
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TOP="$(cd "$HERE/.." && pwd)"

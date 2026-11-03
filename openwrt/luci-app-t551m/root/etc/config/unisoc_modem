@@ -1,5 +1,7 @@
 config core 'main'
 	option at_backend 'custom'
+	option allow_roaming0 '0'
+	option allow_roaming1 '0'
 	option at_port '/dev/stty_nr2'
 	option at_command '/usr/libexec/unisoc-modem/t551m-at'
 	option data_interface 'wan'

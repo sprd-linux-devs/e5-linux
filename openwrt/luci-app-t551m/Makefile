@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-t551m
 PKG_VERSION:=1.1.0
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=MU300 Linux contributors
 PKGARCH:=all
@@ -46,6 +46,7 @@ define Package/luci-app-t551m/install
 	$(INSTALL_DIR) $(1)/www
 	$(CP) ./htdocs/. $(1)/www/
 	$(CP) ./root/. $(1)/
+	chmod 0755 $(1)/etc/init.d/unisoc-battery-history $(1)/usr/libexec/unisoc-modem/battery-history
 	chmod 0755 $(1)/etc/init.d/unisoc-cpu-cores $(1)/usr/libexec/rpcd/unisoc-cpu-cores $(1)/usr/libexec/unisoc-modem/cpu-cores
 	chmod 0755 $(1)/etc/init.d/unisoc-cpu-idle $(1)/usr/libexec/rpcd/unisoc-cpu-idle $(1)/usr/libexec/unisoc-modem/cpu-idle
 	chmod 0755 $(1)/etc/init.d/unisoc-network-performance $(1)/usr/libexec/rpcd/unisoc-network-performance $(1)/usr/libexec/unisoc-modem/network-performance
@@ -56,6 +57,7 @@ define Package/luci-app-t551m/install
 	chmod 0755 $(1)/etc/uci-defaults/97-unisoc-upgrade-policy
 	chmod 0755 $(1)/usr/libexec/rpcd/e5-sounds
 	chmod 0755 $(1)/usr/libexec/rpcd/e5-charge $(1)/usr/libexec/rpcd/e5-nv
+	chmod 0755 $(1)/usr/libexec/rpcd/unisoc-roaming
 	chmod 0755 $(1)/etc/init.d/unisoc-ttl $(1)/etc/hotplug.d/iface/92-unisoc-ttl $(1)/etc/uci-defaults/98-unisoc-ttl
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(CP) ./lmo/. $(1)/usr/lib/lua/luci/i18n/
@@ -77,6 +79,8 @@ define Package/luci-app-t551m/postinst
 	uci -q get luci.languages.tr >/dev/null || uci set luci.languages.tr='Türkçe'
 	uci commit luci
 	[ ! -f /opt/e5/t551m-network-startup ] || python3 /opt/e5/t551m-network-startup --root /
+	/etc/init.d/unisoc-battery-history enable
+	/etc/init.d/unisoc-battery-history start
 	/etc/init.d/unisoc-ttl enable
 	/etc/init.d/unisoc-ttl start || exit 1
 	/etc/init.d/rpcd restart 2>/dev/null || true
