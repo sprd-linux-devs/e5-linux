@@ -327,6 +327,7 @@ def audit(root, profile, release):
                  'opt/e5/t551m-atd', 'usr/libexec/e5-mm-state',
                  'usr/libexec/e5-background', 'usr/libexec/e5-background-cpus',
                  'usr/libexec/e5-charge-core.uc', 'usr/libexec/e5-usb-watch.uc',
+                 'usr/libexec/unisoc-modem/device-usb', 'usr/libexec/unisoc-modem/usb-link.uc',
                  'usr/share/ucode/e5/dash.uc', 'usr/share/rpcd/ucode/e5status.uc'):
         assert (root / name).stat().st_size, name
     modem = (root / 'etc/config/unisoc_modem').read_text()

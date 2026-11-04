@@ -44,9 +44,12 @@ function scopedRpc(method, params) {
 		});
 	};
 }
-function simSelector(root) {
+var simSelectorCleanup = null;
+function simSelector(root, layout) {
+	if (simSelectorCleanup) simSelectorCleanup();
+	var anchor=layout==='hero' && root.querySelector('.mud-hero-meta');
 	var row=document.createElement('div');
-	row.className='mud-card mud-sim-selector';
+	row.className=anchor?'mud-sim-selector mud-sim-hero':'mud-card mud-sim-selector';
 	row.innerHTML='<button type="button" class="mud-sim-toggle" aria-expanded="false" aria-controls="mud-sim-panel">'+
 		'<span class="mud-sim-title">查看 / 控制卡槽</span><span class="mud-sim-current"></span>'+
 		'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
@@ -71,7 +74,17 @@ function simSelector(root) {
 		}
 	};
 	localize(row);
-	root.insertBefore(row,root.firstChild);
+	toggle.setAttribute('aria-label',translate('查看 / 控制卡槽')+' SIM '+(Number(simSlot())+1));
+	if(anchor)anchor.appendChild(row);else root.insertBefore(row,root.firstChild);
+	function outside(event){if(anchor && !row.contains(event.target))expand(false);}
+	var lifetime=new MutationObserver(function(){if(!root.isConnected)cleanup();});
+	function cleanup(){
+		lifetime.disconnect();row.remove();document.removeEventListener('click',outside);
+		if(simSelectorCleanup===cleanup)simSelectorCleanup=null;
+	}
+	simSelectorCleanup=cleanup;
+	document.addEventListener('click',outside);
+	lifetime.observe(document.body,{childList:true,subtree:true});
 	callSimGet().catch(function() {});
 	if (!simVisibilityBound) {
 		simVisibilityBound = true;
@@ -1126,6 +1139,10 @@ var DASH_I18N = {
 	'设备管理': ['Device management', 'Cihaz yönetimi'],
 	'USB 角色': ['USB role', 'USB rolü'],
 	'当前角色': ['Current role', 'Geçerli rol'],
+	'USB 链路速率': ['USB link speed', 'USB bağlantı hızı'],
+	'链路未连接': ['Link disconnected', 'Bağlantı yok'],
+	'未能确认': ['Unconfirmed', 'Doğrulanamadı'],
+	'当前协商的 USB 数据链路速率，不代表实时传输速度；接入扩展坞时显示与扩展坞的链路。': ['Negotiated USB data link speed, not current throughput. With a dock, this is the link to the dock.', 'Anlaşılan USB veri bağlantı hızı; anlık aktarım hızı değildir. Çoklayıcı takılıysa çoklayıcıya olan bağlantı gösterilir.'],
 	'切换 USB 角色': ['Switch USB role', 'USB rolünü değiştir'],
 	'设备模式': ['Device mode', 'Cihaz modu'],
 	'主机模式': ['Host mode', 'Ana makine modu'],
@@ -1925,6 +1942,16 @@ html.mud-bootstrap-theme{--surface:var(--background-color-high);--surface-sunken
 .mud-card>h3{margin:0 0 8px;font-size:.7rem;font-weight:600;color:var(--text-muted,var(--text-light,#787d85));letter-spacing:.08em}
 .mud-card>h3::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand,var(--primary,#2f7bf6));margin-right:7px;vertical-align:1px}
 .mud-hero{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;background:var(--brand-subtle,var(--surface,#fff));margin-bottom:12px;padding:16px 20px}
+.mud-hero{position:relative}
+.mud-hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.mud-sim-hero{position:relative;display:inline-block;margin-left:7px;font-size:.74rem;line-height:1.3;z-index:10;color:var(--text,#222)}
+.mud-sim-hero>.mud-sim-toggle{width:auto;min-height:0;gap:7px;white-space:nowrap;padding:4px 9px;border:1px solid var(--hairline,var(--border,#ddd));border-radius:999px;background:var(--surface,var(--background,#fff));font-weight:600}
+.mud-sim-hero .mud-sim-title{display:none}
+.mud-sim-hero .mud-sim-current{padding:0;border-radius:0;background:transparent;color:inherit;font-size:inherit;line-height:inherit}
+.mud-sim-hero .mud-sim-toggle svg{width:12px;height:12px}
+.mud-sim-hero>.mud-sim-panel{position:absolute;top:calc(100% + 8px);left:0;box-sizing:border-box;width:280px;max-width:calc(100vw - 32px);border:1px solid var(--hairline,var(--border,#ddd));border-radius:calc(var(--radius-base,.5rem) + .375rem);background:var(--surface,var(--background,#fff));box-shadow:var(--app-shadow-md,0 8px 28px rgba(0,0,0,.15))}
+.mud-sim-hero .mud-sim-options{padding:14px}
+@media(max-width:600px){.mud-hero-meta{padding-right:78px}.mud-sim-hero{position:absolute;right:14px;top:12px;margin:0}.mud-sim-hero>.mud-sim-panel{left:auto;right:0}}
 .mud-sec{padding:2px 2px 6px}
 .mud-sec>h3{margin:16px 0 10px;font-size:.7rem;font-weight:600;color:var(--text-muted,var(--text-light,#787d85));letter-spacing:.08em}
 .mud-sec>h3::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand,var(--primary,#2f7bf6));margin-right:7px;vertical-align:1px}

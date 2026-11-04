@@ -36,6 +36,12 @@ with sync_playwright() as p:
     page.wait_for_selector('.mud-device-item')
     assert page.locator('#mud-usb-role').input_value() == 'auto'
     assert page.locator('#mud-usb-role-now').inner_text() == '设备模式'
+    for link, expected in (({'state':'connected','links':[{'mbps':480}]},'480 Mbit/s'),
+                           ({'state':'connected','links':[{'mbps':5000},{'mbps':480}]},'5 Gbit/s · 480 Mbit/s'),
+                           ({'state':'disconnected','links':[]},'链路未连接'),
+                           ({'state':'unavailable','links':[]},'未能确认')):
+        page.evaluate('(link)=>{fixture.usb_link=link;screenView.state=fixture;screenView.paint();}',link)
+        assert page.locator('#mud-usb-link-speed').inner_text() == expected
     assert page.locator('#mud-usb-role option[value="host-sink"]').count() == 0
     assert not page.locator('#mud-usb-role-apply').is_disabled()
     assert page.locator('#mud-usb-net-apply').is_disabled()

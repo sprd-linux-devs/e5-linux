@@ -118,7 +118,7 @@ return view.extend({
 		Promise.all([first, config]).then(function() {
 			schedule(refresh, firstStarted, intervalMs, '_refreshTimer');
 		});
-		M.simSelector(root);
+		M.simSelector(root, 'hero');
 		return root;
 	},
 
@@ -132,7 +132,7 @@ return view.extend({
 		return `
 <div class="mud-card mud-hero">
   <div class="mud-hero-l">
-    <div style="font-size:.78rem;color:var(--text-muted,var(--text-light,#777))">
+    <div class="mud-hero-meta" style="font-size:.78rem;color:var(--text-muted,var(--text-light,#777))">
       <span class="mud-dot" id="mud-dot"></span><b id="mud-host" style="color:var(--text,#222)">--</b>
       <span id="mud-uptime"></span></div>
     <div class="mud-rat" id="mud-rat">--<span class="mud-bars" id="mud-bars"><i style="height:25%"></i><i style="height:45%"></i><i style="height:65%"></i><i style="height:85%"></i><i style="height:100%"></i></span></div>

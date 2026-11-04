@@ -244,7 +244,8 @@ def state():
     if job.get('pending') and not pending:
         error = '角色切换超时，请重新应用'
     supported = net_modes()
-    return dict(ok=1, role=role_now(), policy=read(path, 'auto') if path else 'auto',
+    role = role_now()
+    return dict(ok=1, role=role, usb_link=link_state(role, path), policy=read(path, 'auto') if path else 'auto',
                 role_auto=int(setting('role_auto') == '1'), host_supported=int(path is not None),
                 role_supported=role_modes(),
                 net_mode=setting('net_mode', 'ncm'), net_scope=setting('net_scope', 'permanent'),
@@ -253,6 +254,20 @@ def state():
                 net_boot=json.loads(read(RUN / 'net-boot.json', '{}')),
                 lan_auto=int(setting('lan_auto', '0') == '1'), pending=int(pending),
                 requested_role=job.get('role', ''), last_error=error)
+
+
+def link_state(role, path):
+    # One read-only sysfs snapshot; preserve Type-C/host-sink sequencing and
+    # never substitute a controller maximum for the current negotiated rate.
+    try:
+        result = subprocess.run(['ucode', str(Path(__file__).with_name('usb-link.uc')),
+                                 role, str(path or ''), str(GADGET.parent),
+                                 str(SYS / 'bus/usb/devices'), str(SYS / 'class/udc'),
+                                 str(SYS / 'class/usb_role')],
+                                capture_output=True, text=True, timeout=3, check=True)
+        return json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return dict(state='unavailable', links=[])
 
 
 def queue_role(role, auto):

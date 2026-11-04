@@ -34,6 +34,7 @@ return view.extend({
  <section class="mud-card">
   <h3>USB 角色</h3>
   <div class="mud-r"><span class="mud-k">当前角色</span><span class="mud-v" id="mud-usb-role-now">--</span></div>
+  <div class="mud-r"><span class="mud-k">USB 链路速率</span><span class="mud-v" id="mud-usb-link-speed">--</span></div>
   <div class="mud-device-field"><label for="mud-usb-role">切换 USB 角色</label>
    <select id="mud-usb-role"><option value="auto">自动识别（默认）</option><option value="device">设备模式</option><option value="host">主机模式</option></select></div>
   <label class="mud-device-toggle"><input type="checkbox" id="mud-usb-role-auto">开机自动启用主机模式</label>
@@ -71,6 +72,13 @@ return view.extend({
 	paint: function() {
 		var s = this.state || {};
 		this.q('role-now').textContent = M.translate(s.role === 'host' ? '主机模式' : s.role === 'device' ? '设备模式' : '未连接');
+		var link = s.usb_link || {}, rates = [];
+		(link.links || []).forEach(function(l) {
+			var n = Number(l.mbps), label = isFinite(n) && n > 0 ? (n >= 1000 ? n / 1000 + ' Gbit/s' : n + ' Mbit/s') : l.speed === 'super-speed-plus' ? 'SuperSpeedPlus' : '';
+			if (label && rates.indexOf(label) < 0) rates.push(label);
+		});
+		this.q('link-speed').textContent = link.state === 'connected' && rates.length ? rates.join(' · ') : M.translate(link.state === 'disconnected' ? '链路未连接' : '未能确认');
+		this.q('link-speed').title = M.translate('当前协商的 USB 数据链路速率，不代表实时传输速度；接入扩展坞时显示与扩展坞的链路。');
 		this.q('role').querySelector('option[value="host"]').disabled = s.host_supported === 0;
 		var external = this.q('role').querySelector('option[value="host-sink"]');
 		if (s.role_supported?.includes('host-sink') && !external) {
