@@ -125,6 +125,7 @@ def main():
         'ln -sf ../init.d/ttyd /target/etc/rc.d/K50ttyd && '
         'ucode /target/usr/libexec/unisoc-modem/disable-stock-upgrade /target')
     runpy.run_path(str(TOP / 'devices/t551m/network-startup.py'))['patch_root'](root, a.profile)
+    runpy.run_path(str(TOP / 'tools/stage-flow-offload.py'))['stage'](root)
     # The SMS forward signs DingTalk webhooks with the openssl CLI and sends SMTP
     # through msmtp; the clean base carries the backend files without the packages.
     # (downloads.openwrt.org interrupts mid-index often enough that the same
@@ -291,6 +292,11 @@ def main():
 
 
 def audit(root, profile, release):
+    for name in ('usr/sbin/unisoc-ra-renew','etc/init.d/unisoc-ra-renew'):
+        assert (root/name).read_bytes() == (TOP/'openwrt/overlay'/name).read_bytes().replace(b'\r\n',b'\n'), name
+        assert os.access(root/name, os.X_OK), name
+    for name in ('S98unisoc-ra-renew','K10unisoc-ra-renew'):
+        assert os.readlink(root/'etc/rc.d'/name) == '../init.d/unisoc-ra-renew'
     assert (root / 'etc/e5/device-profile').read_text().strip() == profile
     assert json.loads((root / 'usr/share/unisoc-battery-history/profile.json').read_text())['family'] == 'e5'
     for name in ('usr/share/ucode/mu300/battery-history.uc',

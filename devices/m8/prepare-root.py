@@ -112,6 +112,7 @@ def prepare(base, root, defaults, profile='m8'):
     put('etc/e5/image-form', 'standalone\n')
     put('etc/e5/image-version', profile + '-tf\n')
     runpy.run_path(str(TOP / 'installer/stage-ota.py'))['stage'](root)
+    runpy.run_path(str(TOP / 'tools/stage-ra-renew.py'))['stage'](root)
     # The base ships kernel Docker support only, not a Docker installation.
     if (root / 'usr/bin/dockerd').exists():
         raise ValueError('Unexpected preinstalled Docker')

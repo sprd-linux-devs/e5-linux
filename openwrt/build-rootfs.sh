@@ -488,6 +488,8 @@ mkdir -p $R/usr/libexec/unisoc-modem
 cp /in/feature-source/openwrt/luci-app-t551m/root/usr/libexec/unisoc-modem/disable-stock-upgrade $R/usr/libexec/unisoc-modem/disable-stock-upgrade
 chmod 0755 $R/usr/libexec/unisoc-modem/disable-stock-upgrade
 ucode $R/usr/libexec/unisoc-modem/disable-stock-upgrade $R
+python3 /in/feature-source/tools/stage-flow-offload.py --root $R
+python3 /in/feature-source/tools/stage-ra-renew.py --root $R
 python3 /in/feature-source/installer/stage-ota.py --root $R
 python3 /in/feature-source/tools/release-ui-policy.py --root $R
 cd $R && tar -czf /out/$NAME .
