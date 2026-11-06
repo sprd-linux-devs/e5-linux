@@ -8,6 +8,21 @@ from native_dashboard_fixture import Snapshot, TOP
 
 
 class Dashboard(unittest.TestCase):
+    def test_traffic_ledger_follows_view_or_actual_card_not_legacy_snapshot(self):
+        first={'slot':0,'today_used':10,'month_used':20,'remaining':None,'plan_name':'first'}
+        second={'slot':1,'today_used':12000000,'month_used':99000000,'remaining':501000000,'plan_name':'second'}
+        self.s.write('run/unisoc-modem-traffic/view-sim0.json',json.dumps(first))
+        self.s.write('run/unisoc-modem-traffic/view-sim1.json',json.dumps(second))
+        self.s.write('run/unisoc-modem-traffic/view.json','{"stale":true}')
+        self.s.write('sys/module/sipc_wwan/parameters/card','1')
+        self.assertEqual(self.s.run(slot='1')['traffic'],second)
+        self.assertEqual(self.s.run(slot='0')['traffic'],first)
+        self.assertEqual(self.s.run()['traffic'],second)
+        (self.root/'run/unisoc-modem-traffic/view-sim1.json').unlink()
+        self.assertIsNone(self.s.run(slot='1')['traffic'])
+        self.s.write('sys/module/sipc_wwan/parameters/card','unknown')
+        self.assertIsNone(self.s.run()['traffic'])
+
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         self.root=Path(temp.name);self.s=Snapshot(self.root)

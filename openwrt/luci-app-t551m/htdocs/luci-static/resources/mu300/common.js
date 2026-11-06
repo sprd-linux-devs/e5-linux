@@ -160,8 +160,10 @@ var callForwardStatus = rpc.declare({ object: 'mu300dash', method: 'forward_stat
 var callForwardSet = rpc.declare({ object: 'mu300dash', method: 'forward_set', params: [ 'payload' ], expect: { '': {} } });
 var callForwardClear = rpc.declare({ object: 'mu300dash', method: 'forward_log_clear', expect: { '': {} } });
 var callForwardTest = rpc.declare({ object: 'mu300dash', method: 'forward_test', params: [ 'profile' ], expect: { '': {} } });
-var callTrafficGet = scopedRpc('traffic_get');
-var callTrafficSet = scopedRpc('traffic_set',['payload']);
+var trafficGetRpc = rpc.declare({object:'mu300dash',method:'traffic_get',params:['slot'],expect:{'':{}},nobatch:true});
+var trafficSetRpc = rpc.declare({object:'mu300dash',method:'traffic_set',params:['payload','slot'],expect:{'':{}},nobatch:true});
+function callTrafficGet(slot) { return trafficGetRpc(slot == null ? simSlot() : String(slot)); }
+function callTrafficSet(payload, slot) { return trafficSetRpc(payload, slot == null ? simSlot() : String(slot)); }
 var callTrafficClear = rpc.declare({object:'mu300dash',method:'traffic_clear',params:['slot','confirm'],expect:{'':{}}});
 var callTtlGet = rpc.declare({ object: 'mu300dash', method: 'ttl_get', expect: { '': {} } });
 var callTtlSet = rpc.declare({ object: 'mu300dash', method: 'ttl_set', params: [ 'value' ], expect: { '': {} }, nobatch: true });

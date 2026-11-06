@@ -100,7 +100,7 @@ def main():
             window.calls=[];window.messages=[];window.scope='0';window.fail=false;
             window.data={slot:0,config:{plan_name:'keep',monthly_gb:20},status:{available:true,clock_ok:true,today_used:1000,month_used:2000},days:[],months:[]};
             const M={injectCss(){},localizeMenu(){},localize(){},simSelector(){},translate:s=>s,fmtTrafficBytes:n=>n==null?'--':String(n),esc:s=>s,simSlot:()=>scope,
-                callTrafficGet:()=>Promise.resolve(data),callTrafficSet:()=>Promise.resolve({ok:1}),
+                callTrafficGet:slot=>Promise.resolve({...data,slot:Number(slot??scope)}),callTrafficSet:()=>Promise.resolve({ok:1}),
                 callTrafficClear:(slot,confirm)=>{calls.push({slot,confirm});return Promise.resolve(fail?{ok:0,error:'storage_failed'}:{ok:1});},
                 confirmBox:(title,note)=>{window.confirmTitle=title;return new Promise(resolve=>window.answer=resolve);},
                 busy:(el,value)=>el.disabled=value,toast:()=>({update:(s,type)=>messages.push({s,type}),close(){}})};

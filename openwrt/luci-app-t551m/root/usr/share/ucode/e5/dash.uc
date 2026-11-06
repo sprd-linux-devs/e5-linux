@@ -196,6 +196,7 @@ export function info(slot) {
     let wan=match(iface,/^[A-Za-z0-9_]{1,32}$/)?call(bus,'network.interface.'+iface,'status'):{};
     let wan6=match(iface6,/^[A-Za-z0-9_]{1,32}$/)?call(bus,'network.interface.'+iface6,'status'):{};
     let data_slot=rd('/sys/module/sipc_wwan/parameters/card');
+    let traffic_slot=slot in ['0','1']?slot:data_slot in ['0','1']?data_slot:null;
     let mobile=device(wan.l3_device || wan.device || cfg('data_device','sipa_eth0'));
     let viewing=slot==null || slot==data_slot;
     if(slot in ['0','1'] && !match(mobile || '',slot=='0'?/^sipa_eth[0-7]$/:/^sipa_eth([89]|1[0-5])$/))
@@ -266,7 +267,7 @@ export function info(slot) {
         modem:{alive:cached.alive && exists('/dev/wwan0at0')?1:0,atd:atd?1:0,data_paused:!viewing || !wan.up?1:0,viewing_data_sim:viewing?1:0,data_sim:data_slot in ['0','1']?int(data_slot):null,
             imeis:equipment(atd,'2'),sims:map(['0','1'],n=>({slot:int(n),state:atd?sim_state(n):'unknown'}))},
         boot:boot(),capabilities:{dualboot:executable('/opt/e5/e5-next-boot')?1:0},
-        conns:conntrack(),traffic:obj('/run/unisoc-modem-traffic/view'+(slot in ['0','1']?'-sim'+slot:'')+'.json')};
+        conns:conntrack(),traffic:traffic_slot==null?null:obj('/run/unisoc-modem-traffic/view-sim'+traffic_slot+'.json')};
 };
 
 export function rates(slot) {

@@ -4,14 +4,17 @@
 'require mu300.common as M';
 
 function formatUsage(n) { return M.fmtTrafficBytes(n); }
+function trafficSlot() { return String(M.simSlot()); }
 var ERRORS = { invalid_config: '配置无效', traffic_unavailable: '流量统计服务暂不可用',
 	storage_failed: '统计数据保存失败', clock_unsynced: '系统时间尚未同步',
 	invalid_slot:'请选择有效的 SIM 卡槽', confirmation_required:'需要确认清空' };
 
 return view.extend({
-	load: function() { return L.resolveDefault(M.callTrafficGet(), {}); },
+	load: function() { return L.resolveDefault(M.callTrafficGet(trafficSlot()), {}); },
 	render: function(data) {
 		M.injectCss(); M.localizeMenu();
+		this._disposed = false; this._epoch = 0; this._dirty = false;
+		this._slot = data && data.config ? String(data.slot != null ? data.slot : data.status && data.status.slot != null ? data.status.slot : trafficSlot()) : null;
 		var root = document.createElement('div'); root.className = 'mud';
 		root.innerHTML = `
 <style>
@@ -71,18 +74,31 @@ return view.extend({
 </section>`;
 		M.localize(root); this.root = root; this.data = data || {};
 		this.fill(this.data.config || {}); this.paint(); this.wire();
-		var self = this; poll.add(function() { return self.refresh(); }, 10);
+		var self = this; this._poll = function() { return self.refresh(); }; poll.add(this._poll, 10);
 		M.simSelector(root);
 		return root;
 	},
+	unload: function() { this._disposed = true; this._epoch++; if (this._poll) poll.remove(this._poll); },
 	q: function(k) { return this.root.querySelector('#mud-tr-' + k); },
 	fill: function(c) {
 		var self = this;
 		['plan_name','device'].forEach(function(k) { self.q(k).value = c[k] || ''; });
-		self.q('device').value = M.simSlot() === '1' ? 'sipa_eth8' : 'sipa_eth0';
+		self.q('device').value = this._slot == null ? '' : this._slot === '1' ? 'sipa_eth8' : 'sipa_eth0';
 		['monthly_gb','daily_gb'].forEach(function(k) { self.q(k).value = c[k] || 0; });
 		this.q('reset_day').value = c.reset_day || 1; this.q('count_mode').value = c.count_mode || 'total';
 		this.q('used_gb').value = '';
+	},
+	accept: function(d, slot) {
+		if (slot !== trafficSlot()) return;
+		var actual = d && (d.slot != null ? d.slot : d.status && d.status.slot);
+		if (actual != null && String(actual) !== slot) return;
+		var changed = this._slot !== slot;
+		this.data = d || {};
+		if (this.data.config) {
+			this._slot = slot;
+			if (changed || !this._dirty) { this.fill(this.data.config); this._dirty = false; }
+		}
+		this.paint();
 	},
 	paint: function() {
 		var d = this.data, s = d.status || {}, c = d.config || {}, self = this;
@@ -115,15 +131,21 @@ return view.extend({
 		});
 	},
 	refresh: function() {
-		var self = this;
-		return L.resolveDefault(M.callTrafficGet(), {}).then(function(d) { self.data = d; self.paint(); });
+		if (this._disposed) return Promise.resolve();
+		var self = this, slot = trafficSlot(), epoch = ++this._epoch;
+		if (this._slot !== slot) { this._slot = null; this._dirty = false; this.data = {}; this.fill({}); this.paint(); }
+		return L.resolveDefault(M.callTrafficGet(slot), {}).then(function(d) {
+			if (!self._disposed && self._epoch === epoch) self.accept(d, slot);
+		});
 	},
 	wire: function() {
 		var self = this;
+		this.root.querySelectorAll('input,select').forEach(function(input) { input.addEventListener('input', function() { self._dirty = true; }); });
 		this.q('refresh').onclick = function() { self.refresh(); };
 		this.q('clear').onclick = function() {
 			if (self.clearing) return;
-			const slot = String(self.data.slot ?? M.simSlot());
+			const slot = self._slot;
+			if (slot !== trafficSlot()) { self.refresh(); return; }
 			if (!['0','1'].includes(slot)) return;
 			self.clearing = true;
 			M.confirmBox(M.translate('清空流量记录')+' · SIM '+(+slot+1),
@@ -141,6 +163,8 @@ return view.extend({
 			}).finally(function(){self.clearing=false;});
 		};
 		this.q('save').onclick = function() {
+			const slot = self._slot;
+			if (slot !== trafficSlot()) { self.refresh(); return; }
 			var p = { plan_name:self.q('plan_name').value.trim(), device:self.q('device').value.trim(), count_mode:self.q('count_mode').value,
 				monthly_gb:Number(self.q('monthly_gb').value), daily_gb:Number(self.q('daily_gb').value), reset_day:Number(self.q('reset_day').value) };
 			if (self.q('used_gb').value.trim() !== '') p.used_gb = Number(self.q('used_gb').value);
@@ -153,10 +177,10 @@ return view.extend({
 			confirmed.then(function(yes) {
 				if (!yes) return;
 				M.busy(self.q('save'), true); var toast = M.toast('正在保存流量池设置…', {type:'busy', timeout:0});
-				L.resolveDefault(M.callTrafficSet(JSON.stringify(p)), {}).then(function(r) {
+				L.resolveDefault(M.callTrafficSet(JSON.stringify(p), slot), {}).then(function(r) {
 					M.busy(self.q('save'), false);
 					if (!r.ok) toast.update(ERRORS[r.error] || '保存失败', 'error');
-					else { self.q('used_gb').value = ''; toast.update('已保存', 'success'); self.refresh(); }
+					else { if (slot === trafficSlot()) { self.q('used_gb').value = ''; self._dirty = false; } toast.update('已保存', 'success'); self.refresh(); }
 					setTimeout(function() { toast.close(); }, 3000);
 				});
 			});
