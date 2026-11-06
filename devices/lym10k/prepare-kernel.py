@@ -12,7 +12,7 @@ def apply(kernel):
     if (kernel / 'drivers/power/supply/board-charge-profile.h').exists():
         raise ValueError('Use an independent LYM-10K view, without donor DCP overrides')
     subprocess.run([sys.executable, str(HERE.parent / 't551m/prepare-kernel.py'),
-                    str(kernel), '--preserve-board-current'], check=True)
+                    str(kernel), '--preserve-board-current', '--base-charger-port'], check=True)
     for name in ('charger', 'touch'):
         runpy.run_path(str(HERE / (name + '.py')))['apply'](kernel)
     # Manual, opt-in data-host / power-sink mode. Keep this board's charger

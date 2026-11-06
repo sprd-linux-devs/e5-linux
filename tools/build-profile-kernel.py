@@ -222,6 +222,9 @@ def main():
                         prefix+'_OUT':str(out),prefix+'_RELEASE':'1'})
             command=['bash','devices/'+args.profile+'/build-kernel.sh']
         subprocess.run(command,cwd=TOP,env=env,check=True)
+        if args.profile in ('t512n', 'lym10k'):
+            subprocess.run(['python3',str(TOP/'devices/common/test_bq_profile_isolation.py'),
+                            str(source),'--profile',args.profile],check=True)
         if args.profile=='m8':
             subprocess.run(['python3','devices/m8/package-kernel.py','--build',str(objects),
                             '--out',str(out)],cwd=TOP,env=env,check=True)

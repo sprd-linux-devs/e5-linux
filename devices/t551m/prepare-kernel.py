@@ -157,6 +157,8 @@ def main():
     ap.add_argument('kernel', type=Path)
     ap.add_argument('--preserve-board-current', action='store_true',
                     help='Reuse the driver port without T551M DCP table changes')
+    ap.add_argument('--base-charger-port', action='store_true',
+                    help='A recipient model supplies its own silicon/current adaptation')
     ap.add_argument('--host-sink', action='store_true',
                     help='Enable tested MUSB external-power host policy for this profile')
     args = ap.parse_args()
@@ -195,10 +197,13 @@ def main():
     text = text.replace('charger_cfg.of_node = dev->of_node;',
                         'charger_cfg.fwnode = dev_fwnode(dev);')
     text = text.replace('GPIOF_DIR_IN', 'GPIOF_IN')
-    text = board_charger_variants(board_charger(text))
+    text = board_charger(text)
+    if not args.base_charger_port:
+        text = board_charger_variants(text)
     (k / 'drivers/power/supply/bq2560x-charger.c').write_text(text)
-    (k / 'drivers/power/supply/t551m-charger-variants.h').write_bytes(
-        Path(__file__).with_name('charger-variants.h').read_bytes())
+    if not args.base_charger_port:
+        (k / 'drivers/power/supply/t551m-charger-variants.h').write_bytes(
+            Path(__file__).with_name('charger-variants.h').read_bytes())
     additions = {
         'drivers/power/supply/Kconfig': '\nconfig CHARGER_BQ2560X_SPRD\n\ttristate "Unisoc BQ2560x charger (T551M)"\n\tdepends on I2C && CHARGER_MANAGER && GPIOLIB\n',
         'drivers/power/supply/Makefile': '\nobj-$(CONFIG_CHARGER_BQ2560X_SPRD) += bq2560x-charger.o\n',
