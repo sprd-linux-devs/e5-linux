@@ -26,6 +26,7 @@ endef
 define Package/luci-app-t551m/conffiles
 /etc/mu300/ttl.conf
 /etc/mu300/ttl.offload-off
+/etc/mu300/ttl.offload-pending
 /etc/config/unisoc_modem
 /etc/config/unisoc_apn
 /etc/e5-cpu.json
@@ -58,7 +59,7 @@ define Package/luci-app-t551m/install
 	chmod 0755 $(1)/usr/libexec/rpcd/e5-sounds
 	chmod 0755 $(1)/usr/libexec/rpcd/e5-charge $(1)/usr/libexec/rpcd/e5-nv
 	chmod 0755 $(1)/usr/libexec/rpcd/unisoc-roaming
-	chmod 0755 $(1)/etc/init.d/unisoc-ttl $(1)/etc/hotplug.d/iface/92-unisoc-ttl $(1)/etc/uci-defaults/98-unisoc-ttl
+	chmod 0755 $(1)/etc/init.d/unisoc-ttl $(1)/etc/hotplug.d/iface/92-unisoc-ttl $(1)/etc/hotplug.d/net/92-unisoc-ttl $(1)/etc/uci-defaults/98-unisoc-ttl
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(CP) ./lmo/. $(1)/usr/lib/lua/luci/i18n/
 endef

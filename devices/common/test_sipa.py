@@ -298,6 +298,7 @@ def main():
         apply(root)
         assert before == {name:(root/name).read_bytes() for name in paths}, 'Old patched tree upgrade differs'
         sources = {Path(name).name:(root/name).read_text() for name in paths}
+        runpy.run_path(str(HERE/'test_sipa_flow.py'))['run'](root/'drivers/unisoc_platform/net/sipa_v3')
         cp = sources['sipa_dele_cp_in_ap.c']
         assert cp.index('mutex_init(') < cp.index('ret = sipa_delegator_start(') < cp.index('wake_up_process(')
         assert 'wake_up_process(' not in sources['sipa_dele_cmn.c']
