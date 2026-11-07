@@ -115,17 +115,51 @@ def clean_stage(workspace, model):
     shutil.rmtree(target)
 
 
-def installer_artifact(platform):
+def installer_lock():
+    data = json.loads((TOP/'tools/installer-inputs.lock.json').read_text(encoding='utf-8'))
+    if data.get('format') != 1 or not re.fullmatch('[0-9a-f]{40}', data.get('installer_commit', '')):
+        raise ValueError('Invalid installer input version lock')
+    pin = data['installer_commit'][:7]
+    for platform, key in (('windows-x64','installer_windows'), ('macos-arm64','installer_macos'), ('android-aarch64','installer_android')):
+        record = data.get('assets', {}).get(key, {})
+        url = record.get('url', '')
+        if (not url.startswith('https://') or '/build-tools-'+pin+'/' not in url or
+                not url.endswith('/installer-'+platform+'-'+pin+'.tar.gz') or
+                not re.fullmatch('[0-9a-f]{64}', record.get('sha256', ''))):
+            raise ValueError('Installer archive version/checksum differs from version lock: '+key)
+    return data
+
+
+def verify_installer_pin():
+    actual = subprocess.check_output(['git', '-c', 'safe.directory='+str(TOP/'installer'),
+                                     '-C', str(TOP/'installer'), 'rev-parse', 'HEAD'], text=True).strip()
+    if actual != installer_lock()['installer_commit']:
+        raise ValueError('Installer submodule differs from tools/installer-inputs.lock.json; update the reviewed lock and artifacts together')
+
+
+def installer_artifact(platform, workspace=None, *, use_override=True):
     directory, variable = {
         'windows-x64': ('windows', 'OPENWRT_GUI_ARTIFACT'),
         'macos-arm64': ('macos-arm64', 'OPENWRT_GUI_MACOS_ARTIFACT'),
+        'android-aarch64': ('android', 'OPENWRT_GUI_ANDROID_ARTIFACT'),
     }[platform]
-    return Path(os.environ.get(variable, str(TOP / 'installer/artifacts' / directory)))
+    if use_override and variable in os.environ:
+        return Path(os.environ[variable])
+    workspace = Path(workspace or os.environ.get('OPENWRT_BUILD_WORKSPACE') or Path.home()/'openwrt-build').expanduser().resolve()
+    config = Path(os.environ.get('E5_BUILD_LAYOUT', TOP/'tools/build-layout.json'))
+    data = json.loads(config.read_text(encoding='utf-8'))
+    commit = installer_lock()['installer_commit']
+    root = Path(data['installer_artifacts'].format(repo=str(TOP), workspace=str(workspace),
+                installer_commit=commit, installer_revision=commit[:7]))
+    if not root.is_absolute():
+        raise ValueError('Installer input path must be absolute after expansion')
+    return root/directory
 
 
 def input_check(common, rows):
     if not (TOP/'installer/package_gui.py').is_file():
         raise ValueError('Initialize the shared installer submodule / 请先执行 git submodule update --init --recursive')
+    verify_installer_pin()
     missing = [str(p) for p in common.values() if not p.exists()]
     missing += [str(p) for row in rows.values() for p in row.values() if not p.exists()]
     if missing:
@@ -149,6 +183,7 @@ def input_check(common, rows):
     source = sources()
     for platform in ('windows-x64', 'macos-arm64'):
         validate_artifact(installer_artifact(platform), platform, source)
+    runpy.run_path(str(TOP/'installer/package_android.py'))['artifact'](installer_artifact('android-aarch64'))
     check = runpy.run_path(str(TOP / 'upstream/check-container-support.py'))['check']
     for model, row in rows.items():
         release = check(row['kernel'])
@@ -329,7 +364,7 @@ def refresh_installers(task, common, rows, source):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('plan', 'check', 'package', 'refresh-installers', 'run', 'status', 'clean-staging'))
+    parser.add_argument('action', choices=('plan', 'check', 'prepare-installers', 'package', 'refresh-installers', 'run', 'status', 'clean-staging'))
     parser.add_argument('--profiles', nargs='+', choices=('all', *PROFILES, *EXPERIMENTAL_PROFILES), default=['all'])
     parser.add_argument('--workspace', type=Path, default=Path.home() / 'openwrt-build')
     parser.add_argument('--config', type=Path, default=TOP / 'tools/build-layout.json')
@@ -343,10 +378,15 @@ def main():
     workspace = args.workspace.expanduser().resolve()
     profiles = list(PROFILES) if 'all' in args.profiles else list(dict.fromkeys(args.profiles))
     common, rows = layout(args.config, workspace, profiles)
+    os.environ['OPENWRT_BUILD_WORKSPACE'] = str(workspace)
+    os.environ['E5_BUILD_LAYOUT'] = str(args.config.resolve())
+    for platform, variable in (('windows-x64','OPENWRT_GUI_ARTIFACT'), ('macos-arm64','OPENWRT_GUI_MACOS_ARTIFACT'), ('android-aarch64','OPENWRT_GUI_ANDROID_ARTIFACT')):
+        os.environ.setdefault(variable, str(installer_artifact(platform, workspace)))
     if args.action == 'plan':
         print(json.dumps({'workspace': str(workspace), 'inputs': common, 'profiles': rows,
               'staging': workspace / 'package-work/e5-release', 'output': TOP / 'out/releases',
-              'logs': TOP / 'out/build-logs'}, default=str, indent=2)); return
+              'logs': TOP / 'out/build-logs', 'installer_commit': installer_lock()['installer_commit'],
+              'installers': {p: installer_artifact(p, workspace) for p in ('windows-x64','macos-arm64','android-aarch64')}}, default=str, indent=2)); return
     if args.action == 'status':
         print((TOP / 'out/build-state/latest.json').read_text(encoding='utf-8')); return
     if args.action == 'check':
@@ -360,6 +400,9 @@ def main():
             if args.action == 'run':
                 if not command: raise ValueError('Supply a real compiler/build command after --')
                 task.run('command', command); task.save(state='complete')
+            elif args.action=='prepare-installers':
+                task.run('installer-inputs', [sys.executable, TOP/'tools/prepare-installer-inputs.py', '--workspace', workspace])
+                task.save(state='complete')
             elif args.action=='refresh-installers':
                 refresh_installers(task,common,rows,args.source_release)
             else:

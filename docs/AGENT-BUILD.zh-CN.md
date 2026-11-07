@@ -16,6 +16,7 @@ Windows 和固件在本机编译；Apple Silicon 安装器可以使用 GitHub ma
 - 共用屏幕源码统一在 `devices/common/infoscreen/`，原生构建入口仍是 `devices/common/build-screen-native.py`；不要从历史 T551M 目录或旧发布包取屏幕源码。
 - 正式包：`out/releases/<task>/`；日志：`out/build-logs/<task>/`。
 - 不复制整份源码/rootfs，不导出 Docker volume，不迁往 C 盘，不删除缓存或旧包。
+- 安装器缓存从 `tools/installer-inputs.lock.json` 的提交自动生成，位于 `{workspace}/artifacts/openwrt-tools/<前7位>/`，与 Pro 共用。用 `tools/build-release.py prepare-installers` 准备；不要修改摘要、复制旧工具或只改子模块来绕过一致性校验。
 - U30 Pro 是另一个仓库；不能把它混入本次发布。
 
 ## 1. 确定需要编译的组件

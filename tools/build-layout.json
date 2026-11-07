@@ -1,6 +1,7 @@
 {
   "format": 1,
   "base": "{workspace}/base/e5",
+  "installer_artifacts": "{workspace}/artifacts/openwrt-tools/{installer_revision}",
   "native_screen": {
     "volume": "e5-openwrt-src",
     "toolchain": "toolchain-aarch64_generic_gcc-14.3.0_musl",

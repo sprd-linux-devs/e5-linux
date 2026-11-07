@@ -20,14 +20,44 @@ verify_android=runpy.run_path(str(TOP/'installer/package_android.py'))['verify_a
 
 
 class Layout(unittest.TestCase):
-    def test_installer_defaults_match_native_builder_directories(self):
+    def test_installer_pin_rejects_checkout_drift_and_mislabeled_downloads(self):
+        with patch.object(build.subprocess, 'check_output', return_value='f'*40):
+            with self.assertRaisesRegex(ValueError, 'submodule differs'):
+                build.verify_installer_pin()
+        current = build.installer_lock()
+        with tempfile.TemporaryDirectory() as folder, patch.object(build, 'TOP', Path(folder)):
+            (Path(folder)/'tools').mkdir()
+            current['assets']['installer_windows']['url'] = current['assets']['installer_windows']['url'].replace(current['installer_commit'][:7], '0000000')
+            (Path(folder)/'tools/installer-inputs.lock.json').write_text(json.dumps(current))
+            with self.assertRaisesRegex(ValueError, 'version/checksum differs'):
+                build.installer_lock()
+
+    def test_installer_defaults_follow_versioned_shared_cache(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(build.installer_artifact('windows-x64'), TOP / 'installer/artifacts/windows')
-            self.assertEqual(build.installer_artifact('macos-arm64'), TOP / 'installer/artifacts/macos-arm64')
+            pin = build.installer_lock()['installer_commit'][:7]
+            root = Path.home()/'openwrt-build/artifacts/openwrt-tools'/pin
+            self.assertEqual(build.installer_artifact('windows-x64'), root/'windows')
+            self.assertEqual(build.installer_artifact('macos-arm64'), root/'macos-arm64')
+            self.assertEqual(build.installer_artifact('android-aarch64'), root/'android')
+        with patch.dict(os.environ, {'OPENWRT_GUI_ANDROID_ARTIFACT': '/verified/android'}):
+            self.assertEqual(build.installer_artifact('android-aarch64'), Path('/verified/android'))
         with patch.dict(os.environ, {'OPENWRT_GUI_ARTIFACT': '/verified/windows',
                                     'OPENWRT_GUI_MACOS_ARTIFACT': '/verified/mac'}):
             self.assertEqual(build.installer_artifact('windows-x64'), Path('/verified/windows'))
             self.assertEqual(build.installer_artifact('macos-arm64'), Path('/verified/mac'))
+
+    def test_changing_the_version_lock_changes_the_cache_without_editing_paths(self):
+        current = build.installer_lock()
+        with tempfile.TemporaryDirectory() as folder, patch.object(build, 'TOP', Path(folder)), patch.dict(os.environ, {}, clear=True):
+            root = Path(folder); (root/'tools').mkdir()
+            (root/'tools/build-layout.json').write_text(json.dumps({'installer_artifacts': '{workspace}/artifacts/openwrt-tools/{installer_revision}'}))
+            old = current['installer_commit'][:7]
+            current['installer_commit'] = 'a'*40
+            for entry in current['assets'].values(): entry['url'] = entry['url'].replace(old, 'a'*7)
+            (root/'tools/installer-inputs.lock.json').write_text(json.dumps(current))
+            workspace = root/'workspace'
+            self.assertEqual(build.installer_artifact('windows-x64', workspace), workspace/'artifacts/openwrt-tools/aaaaaaa/windows')
+            self.assertFalse(workspace.exists())
 
     def test_registry_covers_every_model_without_copying_or_creating(self):
         with tempfile.TemporaryDirectory() as folder:
