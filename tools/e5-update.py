@@ -16,6 +16,13 @@ import uuid
 GUI = None
 
 
+def partition_update_command(image):
+    if image[:8] != b'ANDROID!' or len(image) < 1584 or struct.unpack_from('<I', image, 40)[0] != 4:
+        raise ValueError('Partition update requires a verified boot-v4 image')
+    pad = b'e5.lkpad=0000000000 ' if image[44:1580].startswith(b'e5.lkpad=') else b''
+    return pad + b'e5.part_v=2 e5.root=part e5.part_update=1'
+
+
 def bind_update_boot(image, manifest, fallback, linux_trial, helper):
     if hashlib.sha256(image).hexdigest() != manifest['sha256']:
         raise ValueError('Package boot checksum mismatch')
@@ -257,7 +264,7 @@ def main():
         with __import__('tempfile').TemporaryDirectory() as temporary:
             image = bytearray(bound_boot)
             if layout == 'part':
-                image[44:1580] = b'e5.part_v=2 e5.root=part e5.part_update=1'.ljust(1536, b'\0')
+                image[44:1580] = partition_update_command(image).ljust(1536, b'\0')
             head = Path(temporary) / 'boot-head.img'
             head.write_bytes(image[:boot['persist_log_offset']])
             for name in ('openwrt.ext4.gz', 'ext4-tools.tar', 'device-install-image.sh',

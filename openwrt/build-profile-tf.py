@@ -199,9 +199,9 @@ def main():
         '--misc-head', a.misc_head, '--kernel', a.kernel / 'Image.lk',
         '--modules', a.kernel / 'modules', '--module-order', boot_order,
         '--busybox', a.busybox, *ufs_args, '--init', init, '--cmdline',
-        'e5.lkpad=0000000000' if a.profile == 't512n' else '', '--out', files / 'boot.img')
+        'e5.lkpad=0000000000' if a.profile in ('t512n', 'lym10k') else '', '--out', files / 'boot.img')
     boot = json.loads((files / 'boot.json').read_text())
-    expected_command = ('e5.lkpad=0000000000 ' if a.profile == 't512n' else '') + 'e5.part_v=2'
+    expected_command = ('e5.lkpad=0000000000 ' if a.profile in ('t512n', 'lym10k') else '') + 'e5.part_v=2'
     assert boot['overlay_files'] == 0 and boot['cmdline'] == expected_command
     (files / 'boot.misc-slot-b-trial.bin').rename(files / 'boot-misc-slot-b.bin')
     sources = {}

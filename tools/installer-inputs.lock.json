@@ -1,18 +1,18 @@
 {
   "format": 1,
-  "installer_commit": "78cfdd3dd814f9cc5230d3c8601f5b01f4308bfa",
+  "installer_commit": "ab2f30c6301d0a4d7f734fd59a50d190c2a2a01f",
   "assets": {
     "installer_windows": {
-      "url": "https://github.com/kanoqwq/u30pro_openwrt/releases/download/build-tools-78cfdd3/installer-windows-x64-78cfdd3.tar.gz",
-      "sha256": "06e4257260c6cb6616f036c3e857b7e909d07c22b100dc848dc2ce67d7457764"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-ab2f30c/installer-windows-x64-ab2f30c.tar.gz",
+      "sha256": "407a81783272a3e4174effb2784c1227a1fa8a8c7f389f6eaba0b298ea23cbdb"
     },
     "installer_macos": {
-      "url": "https://github.com/kanoqwq/u30pro_openwrt/releases/download/build-tools-78cfdd3/installer-macos-arm64-78cfdd3.tar.gz",
-      "sha256": "e2c26d63200ff30b43e5fbd486614c83e00f6d927050d36f2b2bc3c2fdbf3dab"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-ab2f30c/installer-macos-arm64-ab2f30c.tar.gz",
+      "sha256": "83fbabac6f6baea8792eff2745c7e1e1491966ebebac280d4fff50dad3ddc128"
     },
     "installer_android": {
-      "url": "https://github.com/kanoqwq/u30pro_openwrt/releases/download/build-tools-78cfdd3/installer-android-aarch64-78cfdd3.tar.gz",
-      "sha256": "af1ef900445a4469d23f75b124a695e10dadec5884824d3ffa856b94dc4883c5"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-ab2f30c/installer-android-aarch64-ab2f30c.tar.gz",
+      "sha256": "44d23a0b349021dced7d98a46d6a8e0dc2a379c76088c10c34e063fb578d7d3d"
     }
   }
 }

@@ -53,6 +53,13 @@ python3 tools/build-release.py prepare-installers --workspace /home/kano/openwrt
 `OPENWRT_GUI_ANDROID_ARTIFACT` 仍可显式选择本机产物，且必须通过同样的源码／文件校验。
 发布器会将选定路径传给组包及安装器刷新子进程。
 
+维护者更新安装器输入时，先提交共享安装器并更新版本锁的提交及 URL；
+各平台原生重编后，显式选择已验证的产物，在受锁入口中运行
+`python3 tools/build-installer-inputs.py`。它在
+`{workspace}/cache/openwrt-tools-publish/<前7位>/` 生成工具归档和摘要，
+不含固件根、NV 或签名密钥。发布后填写真实摘要，再用 `prepare-installers`
+从公开链接重新验证；不能通过手改产物指纹接受旧二进制。
+
 ```sh
 python3 tools/build-release.py plan --profiles all
 python3 tools/build-release.py check --profiles e5 t551m m8 t512n yuanhang41s k1
