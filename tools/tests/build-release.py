@@ -20,6 +20,27 @@ verify_android=runpy.run_path(str(TOP/'installer/package_android.py'))['verify_a
 
 
 class Layout(unittest.TestCase):
+    def test_epoch_zero_inputs_are_zip_compatible_without_changing_bytes_or_modes(self):
+        prepare = runpy.run_path(str(TOP/'tools/prepare-installer-inputs.py'))
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            binary = root/'tool'; binary.write_bytes(b'verified binary')
+            binary.chmod(0o755)
+            os.utime(binary, (0, 0))
+            checksum = prepare['sha'](binary)
+            mode = binary.stat().st_mode
+            current = root/'current'; current.write_bytes(b'current')
+            timestamp = current.stat().st_mtime_ns
+            prepare['normalize_archive_dates'](root)
+            prepare['normalize_archive_dates'](root)
+            self.assertEqual(prepare['sha'](binary), checksum)
+            self.assertEqual(binary.stat().st_mode, mode)
+            self.assertEqual(current.stat().st_mtime_ns, timestamp)
+            with zipfile.ZipFile(root/'output.zip', 'w') as archive:
+                archive.write(binary, 'tool')
+            with zipfile.ZipFile(root/'output.zip') as archive:
+                self.assertEqual(archive.read('tool'), b'verified binary')
+
     def test_installer_pin_rejects_checkout_drift_and_mislabeled_downloads(self):
         with patch.object(build.subprocess, 'check_output', return_value='f'*40):
             with self.assertRaisesRegex(ValueError, 'submodule differs'):

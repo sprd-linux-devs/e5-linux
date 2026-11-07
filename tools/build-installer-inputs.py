@@ -37,7 +37,8 @@ def main():
             with tarfile.open(fileobj=compressed, mode='w', dereference=False) as archive:
                 for path in sorted(files):
                     info = archive.gettarinfo(str(path), arcname=path.relative_to(root).as_posix())
-                    info.uid = info.gid = info.mtime = 0
+                    info.uid = info.gid = 0
+                    info.mtime = 315619200  # ZIP-compatible reproducible date, 1980-01-02 UTC.
                     info.uname = info.gname = ''
                     if info.isfile():
                         with path.open('rb') as source:

@@ -12,6 +12,18 @@ import tarfile
 import urllib.request
 
 TOP = Path(__file__).resolve().parents[1]
+# ZIP dates start in 1980. Jan 2 remains in range in every local timezone.
+ARCHIVE_EPOCH = 315619200
+
+
+def normalize_archive_dates(root):
+    """Keep reproducible epoch-zero tar inputs usable by ZIP packaging."""
+    for path in root.rglob('*'):
+        if path.is_symlink() or not path.is_file():
+            continue
+        status = path.stat()
+        if status.st_mtime < ARCHIVE_EPOCH:
+            os.utime(path, ns=(status.st_atime_ns, ARCHIVE_EPOCH * 1000000000))
 
 
 def sha(path):
@@ -80,6 +92,7 @@ def prepare(workspace):
             android['artifact'](root)
         else:
             gui['validate_artifact'](root, platform, gui['sources']())
+        normalize_archive_dates(root)
         print('Verified '+platform+': '+str(root), flush=True)
 
 
