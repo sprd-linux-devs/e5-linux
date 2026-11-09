@@ -35,11 +35,54 @@ function device_no_dfs(config) {
 '''
 
 
+CHANLIST_BAND = '''/* Backport dikeckaan/mu300-linux#432: a 5 GHz ACS list can survive a LuCI
+ * band change. Filter against the selected band's actual wiphy frequencies;
+ * otherwise ACS on 2.4 GHz receives e.g. 36 40 44 48 and cannot start the AP.
+ * Keep valid lists and widths unchanged, including user-supplied ranges. */
+function device_chanlist_band(config) {
+	let list = config.chanlist;
+	if (list == null || !length(phy_capabilities.freqs))
+		return;
+	if (type(list) != 'array')
+		list = [ list ];
+	let chans = {};
+	for (let f in phy_capabilities.freqs) {
+		let chan = f.freq == 2484 ? 14 : f.freq == 5935 ? 2 :
+			f.freq < 2500 ? (f.freq - 2407) / 5 :
+			f.freq < 5950 ? (f.freq - 5000) / 5 : (f.freq - 5950) / 5;
+		chans[chan] = true;
+	}
+	let keep = [], dropped = [];
+	for (let entry in list)
+		for (let item in split(trim(`${entry}`), /[ \t]+/)) {
+			if (item == '')
+				continue;
+			let ends = match(item, /^([1-9][0-9]*)(-([1-9][0-9]*))?$/);
+			if (!ends || !chans[+ends[1]] ||
+			    (ends[3] && (!chans[+ends[3]] || +ends[1] > +ends[3])))
+				push(dropped, item);
+			else
+				push(keep, item);
+		}
+	if (!length(dropped))
+		return;
+	log(`channel list: ${join(' ', dropped)} not on the ${config.band} band or invalid, left out` +
+	    (length(keep) ? '' : '; automatic channel selection uses the whole band'));
+	if (length(keep))
+		config.chanlist = keep;
+	else
+		delete config.chanlist;
+}
+
+'''
+
+
 def patch_wifi_capabilities(root):
     path = root / 'usr/share/ucode/wifi/hostapd.uc'
     if not path.exists():
         return
     text = path.read_text()
+    original = text
     marker = '// unisoc-driver-dfs-capabilities:'
     if marker in text:
         # Upgrade roots carrying the earlier auto-shrink policy too. Keep
@@ -47,8 +90,17 @@ def patch_wifi_capabilities(root):
         # marked policy section, which immediately precedes generate().
         start = text.index(marker)
         end = text.index('function generate(config) {', start)
-        if text[start:end] != NO_DFS:
-            path.write_text(text[:start] + NO_DFS + text[end:])
+        text = text[:start] + NO_DFS + CHANLIST_BAND + text[end:]
+        # Existing roots already have the DFS call; install the new guard
+        # before it exactly once without rewriting user UCI configuration.
+        call = '\tdevice_no_dfs(config);'
+        band_call = '\tdevice_chanlist_band(config);'
+        if text.count(call) != 1 or text.count(band_call) > 1:
+            raise ValueError('Unexpected existing wifi policy call sites')
+        if band_call not in text:
+            text = text.replace(call, band_call + '\n' + call)
+        if text != original:
+            path.write_text(text)
         return
     replacements = [
         ('wiphy_info, wiphy_band\n', 'wiphy_info, wiphy_band, log\n'),
@@ -58,8 +110,8 @@ def patch_wifi_capabilities(root):
          "\tlet band = wiphy_band(phy, config.band);\n"
          "\tphy_features.radar_detect = length(filter(phy.interface_combinations ?? [], (c) => c.radar_detect_widths)) > 0;\n"
          "\tphy_capabilities.freqs = band?.freqs ?? [];"),
-        ('function generate(config) {', NO_DFS + 'function generate(config) {'),
-        ('\tset_device_defaults(config);\n', '\tset_device_defaults(config);\n\tdevice_no_dfs(config);\n'),
+        ('function generate(config) {', NO_DFS + CHANLIST_BAND + 'function generate(config) {'),
+        ('\tset_device_defaults(config);\n', '\tset_device_defaults(config);\n\tdevice_chanlist_band(config);\n\tdevice_no_dfs(config);\n'),
     ]
     for old, new in replacements:
         if text.count(old) != 1:

@@ -32,11 +32,39 @@ def adapt(text):
 
 
 def apply(kernel):
-    path = Path(kernel) / 'drivers/unisoc_platform/thermal/sprd_soc_thm.c'
+    kernel = Path(kernel)
+    path = kernel / 'drivers/unisoc_platform/thermal/sprd_soc_thm.c'
     old = path.read_text()
     new = adapt(old)
+    shell = kernel / 'drivers/thermal/sprd_shell_thm.c'
+    shell_old = shell.read_text()
+    shell_new = quiet_shell_reads(shell_old)
     if new != old:
         path.write_text(new)
+    if shell_new != shell_old:
+        shell.write_text(shell_new)
+
+
+def quiet_shell_reads(text):
+    """Quiet only WCN read errors; preserve fallback and high-temp warnings."""
+    marker = 'WCN read errors are debug-only; retain abnormal temperature warnings.'
+    if marker in text:
+        return text
+    call = 'pr_err("get thermal %s temp failed\\n", thermal_zone_device_type(tz));'
+    include = '#include <linux/kernel.h>'
+    if text.count(call) != 1 or text.count(include) != 1:
+        raise ValueError('Unexpected stock shell thermal read-error logging')
+    replacement = (
+        '/* ' + marker + ' */\n'
+        '\t\t\tif (ret && !strcmp(thermal_zone_device_type(tz), "wcn-thmzone"))\n'
+        '\t\t\t\tpr_debug("get thermal %s temp failed\\n", thermal_zone_device_type(tz));\n'
+        '\t\t\telse\n'
+        '\t\t\t\tpr_err_ratelimited("get thermal %s temp failed\\n", thermal_zone_device_type(tz));'
+    )
+    text = text.replace(call, replacement)
+    if '#include <linux/string.h>' not in text:
+        text = text.replace(include, include+'\n#include <linux/string.h>')
+    return text
 
 
 if __name__ == '__main__':

@@ -72,6 +72,50 @@ class Pdu(unittest.TestCase):
 
 
 class Inbox(unittest.TestCase):
+    def setUp(self):
+        # Never let offline tests write into a host /var/run or /tmp/run.
+        temporary = tempfile.TemporaryDirectory(prefix='e5-sms-inbox-test-')
+        self.addCleanup(temporary.cleanup)
+        scoped = patch.object(receiver, 'RUN', Path(temporary.name))
+        scoped.start()
+        self.addCleanup(scoped.stop)
+
+    def test_both_slots_restore_stored_mode_before_listing(self):
+        for own in (0, 1):
+            for card in (0, 1):
+                commands=[]
+                def at(slot, command):
+                    commands.append((slot,command))
+                    if command=='CCID?':return '+CCID: "89860012345678901234"'
+                    if command=='CNMI?':return '+CNMI: 3,2,2,1,1'
+                    if command=='CMGF?':return '+CMGF: 0'
+                    if command=='CMGL=4':return '+CMGL: 1,0,,10\n'+ucs2('slot fixture')+'\nOK'
+                    return 'OK'
+                with patch.object(receiver,'at',side_effect=at):
+                    _, messages = receiver.read_card(card,own)
+                self.assertTrue(messages)
+                self.assertIn((card,'CNMI=2,1,0,0,0'),commands)
+                self.assertTrue(all(slot==card for slot,_ in commands))
+                self.assertLess(commands.index((card,'CNMI=2,1,0,0,0')),commands.index((card,'CMGL=4')))
+
+    def test_nr0_origin_hint_does_not_become_a_message_slot(self):
+        # The event's ring/card field is not origin evidence. A sole ring-0
+        # indication must make both explicitly selected storages eligible.
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'sms_events'
+            path.write_text('1 0 SM 7\n')
+            class Poll:
+                def register(self,*args):pass
+                def poll(self,*args):return []
+            events=receiver.Events()
+            try:
+                with patch.object(receiver.glob,'glob',return_value=[str(path)]),patch.object(receiver.select,'poll',return_value=Poll()):
+                    self.assertEqual(events.wait(0),{0,1})
+                    self.assertEqual(events.wait(0),set())
+                    path.write_text('2 0 SM 7\n')
+                    self.assertEqual(events.wait(0),{0,1})
+            finally:events.close()
+
     def fresh(self):
         return {'version':1,'next_id':receiver.MIN_ID,'initialized':[],'messages':[],'slots':{}}
 

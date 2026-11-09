@@ -28,7 +28,7 @@ function device_no_dfs(config) { config.htmode = 'HT20'; }
     module['patch_wifi_capabilities'](temp)
     assert first == target.read_bytes(), 'existing roots did not migrate'
     script = temp / 'test.uc'
-    script.write_text('let phy_features = {}, phy_capabilities = {};\nfunction log(s) {}\n' + module['NO_DFS'] + '''
+    script.write_text('let phy_features = {}, phy_capabilities = {};\nfunction log(s) {}\n' + module['NO_DFS'] + module['CHANLIST_BAND'] + '''
 function check(value, message) { if (!value) die(message); }
 function channels(list) { return map(list, (c) => ({freq:5000+5*c})); }
 function run(channel, mode, freqs, radar, band) {
@@ -61,6 +61,28 @@ c=run(52,'VHT80',[restricted]);
 check(c.channel==36 && c.htmode=='VHT80' && restricted.no_ir && restricted.disabled,
       'policy must not modify regulatory flags used by hostapd/nl80211');
 print('PASS: fixed channel 36, unchanged bandwidth, DFS/ACS scope and regulatory flags\\n');
+function band_list(band, list, freqs) {
+    phy_capabilities={freqs:freqs};
+    let cfg={band:band,channel:0,htmode:band=='2g'?'HT40':'VHT80',chanlist:list};
+    device_chanlist_band(cfg);
+    return cfg;
+}
+let two=map([1,6,11],(c)=>({freq:2407+5*c}));
+c=band_list('2g','36 40 44 48',two);
+check(c.chanlist==null && c.htmode=='HT40','stale 5 GHz list removed without narrowing');
+c=band_list('2g',['1 6','36','1-11','1-36'],two);
+check(join(' ',c.chanlist)=='1 6 1-11','mixed list and ranges');
+c=band_list('2g','1 6 11',two);
+check(c.chanlist=='1 6 11','valid list is untouched');
+c=band_list('5g','1 6 11',channels([36,40,44,48]));
+check(c.chanlist==null && c.htmode=='VHT80','reverse band change');
+c=band_list('2g',['1-6-11','11-1','0x6','6'],two);
+check(join(' ',c.chanlist)=='6','malformed or reversed ranges rejected');
+c=band_list('2g','14',[{freq:2484}]);
+check(c.chanlist=='14','channel 14 mapping');
+c=band_list('6g','2',[{freq:5935}]);
+check(c.chanlist=='2','6 GHz special channel mapping');
+print('PASS: band-scoped lists, ranges, unchanged width and channel mappings\\n');
 ''')
     def inside(path):
         return '/' + str(path.relative_to(ROOT))

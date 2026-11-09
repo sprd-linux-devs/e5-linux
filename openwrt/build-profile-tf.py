@@ -116,6 +116,7 @@ def main():
         'mkdir /tmp/modem-verify && apk extract --allow-untrusted --destination /tmp/modem-verify /modem/' + modem_daemon + ' && '
         'cmp /target/usr/sbin/ModemManager /tmp/modem-verify/usr/sbin/ModemManager && '
         'ucode /target/usr/libexec/unisoc-modem/disable-channel-analysis /target && '
+        'ucode /target/usr/libexec/unisoc-modem/limit-wifi-widths /target && '
         # Incremental builds must also add newly mandatory packages to old bases.
         'apk_retry --root /target update >/dev/null && '
         'apk_retry --root /target --no-scripts add ttyd luci-app-ttyd luci-i18n-ttyd-zh-cn luci-i18n-ttyd-tr iw-full '

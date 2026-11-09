@@ -191,12 +191,12 @@ def read_card(card, own):
     if not match:
         raise RuntimeError('SIM identity unavailable')
     identity = hashlib.sha256(match[1].upper().encode()).hexdigest()
-    if card != own:
-        # The secondary radio starts with CNMI=0 on this CP: explicitly ask it
-        # to store SMS and announce +CMTI on its own URC ring. No RF/data switch.
-        cnmi = at(card, 'CNMI?')
-        if not re.search(r'\+CNMI:\s*2,\s*1,', cnmi):
-            at(card, 'CNMI=2,1,0,0,0')
+    # Either slot can inherit disabled/direct routing after a modem restart.
+    # NR0 carries both slots' hints; only this scoped storage query proves the
+    # receiving slot. Apply the same stored mode to the primary and secondary.
+    cnmi = at(card, 'CNMI?')
+    if not re.search(r'\+CNMI:\s*2,\s*1,', cnmi):
+        at(card, 'CNMI=2,1,0,0,0')
     mode = at(card, 'CMGF?')
     if not re.search(r'\+CMGF:\s*0', mode):
         at(card, 'CMGF=0')
