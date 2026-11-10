@@ -19,6 +19,7 @@ if op=='get':
  if a[1] not in v:sys.exit(1)
  print(v[a[1]]);sys.exit(0)
 if op=='show':
+ if s.get('fail')=='show':sys.exit(1)
  for k,x in v.items():
   if k.count('.')==1:print(k+'='+x)
  sys.exit(0)
@@ -61,11 +62,13 @@ class Defaults(unittest.TestCase):
             for name in ('uci','wifi'):
                 file=bin_dir/name;file.write_text(MOCK);file.chmod(0o755)
             marker=etc/'configured.wireless'
+            wireless=root/'wireless';wireless.write_text('existing wireless bytes\n' if values else '')
             if stamp:marker.touch()
             if settings:
                 (etc/'install.conf').write_text('exit 77\n' if bad_settings else
                     "E5_WIFI_SSID='安装热点'\nE5_WIFI_KEY='factory-password'\nE5_WIFI_CHANNEL=149\n")
-            script=root/'91-wireless';script.write_text(SCRIPT.read_text().replace('/etc/e5',str(etc)))
+            script=root/'91-wireless';script.write_text(SCRIPT.read_text().replace('/etc/e5',str(etc))
+                .replace('/etc/config/wireless',str(wireless)))
             env=dict(os.environ,PATH=str(bin_dir)+':'+os.environ['PATH'],UCI_FIXTURE=str(state))
             # Match boot's conditional sourcing; plain set -e would not reliably
             # propagate failures in this context. The script must do it itself.
@@ -114,6 +117,10 @@ class Defaults(unittest.TestCase):
         del values['wireless.radio0.disabled'];self.install(values)
     def test_pending_custom_changes_are_not_stamped(self):
         values=ap();result,state,stamp=self.execute(values,pending=True)
+        self.assertNotEqual(result.returncode,0);self.assertFalse(stamp)
+        self.assertEqual(state['values'],values);self.assertEqual(state['writes'],[])
+    def test_unreadable_custom_config_is_not_reinitialized(self):
+        values=ap();result,state,stamp=self.execute(values,fail='show')
         self.assertNotEqual(result.returncode,0);self.assertFalse(stamp)
         self.assertEqual(state['values'],values);self.assertEqual(state['writes'],[])
     def test_failed_commit_retry_does_not_stamp_staging(self):

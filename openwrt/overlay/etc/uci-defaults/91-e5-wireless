@@ -13,7 +13,11 @@ E5_WIFI_SSID=E5-Linux E5_WIFI_KEY= E5_WIFI_CHANNEL=149
 # A missing stamp is not permission to overwrite restored/user configuration.
 # Only an absent interface or wifi config's untouched disabled/open template
 # needs installation credentials. Keep custom AP, STA and mesh settings intact.
-for section in $(uci -q show wireless | sed -n 's/^wireless\.\([^=]*\)=wifi-iface$/\1/p'); do
+wireless_state=$(uci -q show wireless) || {
+	# Preserve existing bytes if UCI cannot read/parse them; retry next boot.
+	[ ! -s /etc/config/wireless ] || exit 1
+}
+for section in $(printf '%s\n' "$wireless_state" | sed -n 's/^wireless\.\([^=]*\)=wifi-iface$/\1/p'); do
 	mode=$(uci -q get "wireless.$section.mode") || mode=
 	ssid=$(uci -q get "wireless.$section.ssid") || ssid=
 	enc=$(uci -q get "wireless.$section.encryption") || enc=

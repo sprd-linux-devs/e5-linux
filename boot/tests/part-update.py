@@ -66,7 +66,8 @@ class OfflineUpdate(unittest.TestCase):
             (pending / 'openwrt.ext4.gz').write_bytes(gzip.compress(raw,compresslevel=1))
             archive(pending / 'firmware.tar', {'lib/firmware/wcnmodem.bin':b'own firmware',
                 'opt/e5/android/vendor/bin/modem_control':b'#!/bin/sh\n'})
-            archive(pending / 'settings.tar', {'etc/config/wireless':'自己的热点'.encode(),
+            wireless="config wifi-iface user_ap\n option ssid '自己的热点'\n option encryption 'psk2+ccmp'\n option key 'user-new-password!'\n"
+            archive(pending / 'settings.tar', {'etc/config/wireless':wireless.encode(),
                 **({'etc/e5/sd-root':b'e5-openwrt-sd\n', 'etc/e5/sd-gen':b'7\n'} if kind == 'sd' else {}),
                 'etc/e5/image-version':b'OLD release', 'etc/e5/device-profile':b't551m\n',
                 'etc/e5-infoscreen/plugins/phone/phone.js':b'old phone code',
@@ -138,7 +139,7 @@ reboot() {{ echo REBOOT >> "{root}/calls"; }}
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)
                 self.assertLess(calls.index('unmount '+str(mountpoint)),calls.index('WRITE'))
                 self.assertIn('REBOOT',calls)
-                self.assertEqual((new/'etc/config/wireless').read_text(),'自己的热点')
+                self.assertEqual((new/'etc/config/wireless').read_text(),wireless)
                 self.assertIn('saved-password-hash',(new/'etc/shadow').read_text())
                 self.assertEqual((new/'etc/e5/image-version').read_text(),'new release\n')
                 self.assertEqual((new/'etc/e5-infoscreen/plugins/phone/phone.js').read_text(),'new phone code')

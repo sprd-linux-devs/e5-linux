@@ -7,7 +7,7 @@ function quote(value) { return "'" + replace(value, /'/g, "'\\''") + "'"; }
 
 return function(ctx) {
  function status() {
-  let installed = access('/usr/lib/lpac', 1) && access('/usr/libexec/unisoc-modem/euicc', 1);
+  let installed = access('/usr/lib/lpac', 'x') && access('/usr/libexec/unisoc-modem/euicc', 'x');
   return { installed: !!installed, installing: false,
    error: installed ? null : 'eSIM components are missing; install the current complete firmware.' };
  }
