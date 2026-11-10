@@ -1,0 +1,18 @@
+{
+  "id": "esim",
+  "api_version": 2,
+  "version": "1.1.0",
+  "name": {
+    "zh": "eSIM 管理",
+    "en": "eSIM Manager",
+    "tr": "eSIM Yönetimi"
+  },
+  "description": {
+    "zh": "管理双卡 eSIM 配置文件、下载和通知",
+    "en": "Manage dual-SIM eSIM profiles, downloads and notifications",
+    "tr": "Çift SIM eSIM profillerini, indirmeleri ve bildirimleri yönetin"
+  },
+  "entry": "index.html",
+  "order": 25,
+  "notifications": false
+}

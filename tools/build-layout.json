@@ -1,5 +1,6 @@
 {
   "format": 1,
+  "lpac_apks": "{workspace}/artifacts/lpac",
   "base": "{workspace}/base/e5",
   "installer_artifacts": "{workspace}/artifacts/openwrt-tools/{installer_revision}",
   "native_screen": {

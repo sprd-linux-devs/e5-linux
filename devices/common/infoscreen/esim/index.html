@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>eSIM</title>
+<link rel="stylesheet" href="esim.css">
+</head>
+<body>
+<header class="topbar">
+ <div class="titles">
+  <h1 id="screen-title">eSIM 管理</h1>
+  <p id="screen-subtitle">配置文件、下载与通知</p>
+ </div>
+ <span id="slot-badge" class="slot-badge" hidden></span>
+</header>
+<nav id="sim-tabs" class="sim-tabs" role="tablist" aria-label="SIM" hidden>
+ <button id="sim-tab-0" class="sim-tab" type="button" role="tab" data-slot="0" data-focus="tab:0" aria-selected="true">SIM 1</button>
+ <button id="sim-tab-1" class="sim-tab" type="button" role="tab" data-slot="1" data-focus="tab:1" aria-selected="false">SIM 2</button>
+</nav>
+<main id="app" class="app" aria-live="polite"></main>
+<script src="/sdk/e5.js"></script>
+<script src="esim.js"></script>
+</body>
+</html>

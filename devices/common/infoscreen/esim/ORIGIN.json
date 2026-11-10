@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "upstream": "https://github.com/XiaoMengXinX/e5-webapp-esim",
+  "revision": "11b10358c0c140357cea33697530b277babd0f8c",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 Enceka <enceka@yeah.net>",
+  "adaptations": [
+    "Use the firmware-owned AT queues and eUICC jobs; no separate AT port reader",
+    "Dependencies are built into firmware; no background APK installer",
+    "Translate shared eUICC job errors in zh/en/tr; isolate failed SE reads and bound notification requests to sequence numbers"
+  ],
+  "backend_reference": {
+    "upstream": "https://github.com/XiaoMengXinX/luci-app-e5-esim",
+    "revision": "6fb6b3189df8981b40b720f985fb36500103d460",
+    "license": "MIT"
+  }
+}

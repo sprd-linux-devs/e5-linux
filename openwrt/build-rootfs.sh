@@ -110,6 +110,8 @@ BLOCK_APK="$OUT/block-mount-guarded.apk"
 E5_WRT_VER="$VER" sh "$HERE/build-block-mount.sh" "$BLOCK_APK"
 WIFI_APKS="$TOP/work/wifi-sae"
 UNISOC_WRT_VER="$VER" sh "$HERE/build-hostapd.sh" "$WIFI_APKS"
+LPAC_APKS=${UNISOC_LPAC_APKS:-$(python3 "$TOP/openwrt/lpac-state.py" --path)}
+UNISOC_WRT_VER="$VER" sh "$TOP/openwrt/build-lpac.sh" "$LPAC_APKS"
 
 # the Argon theme: not in OpenWrt's feeds; its release's packages (arch all)
 ARGON_URL=https://github.com/jerrykuku/luci-theme-argon/releases/download/v2.4.7
@@ -292,6 +294,8 @@ docker run --rm --platform linux/arm64 \
     -v "$BLOCK_APK":/in/block-mount-guarded.apk:ro \
     -v "$BLOCK_APK.build-id":/in/block-mount.build-id:ro \
     -v "$WIFI_APKS":/in/wifi-sae:ro \
+    -v "$LPAC_APKS":/in/lpac:ro \
+    -v "$TOP/openwrt":/in/euicc-source/openwrt:ro \
     -v "$SA":/in/sa:ro -e STANDALONE="$STANDALONE" -v "$RM":/in/root-modules:ro \
     -v "$WORK/extra":/in/extra:ro -e EXTRA_LIST="$EXTRA_LIST" -v "$TP":/in/transplant:ro \
     -v "$TAROUT":/out -e NAME="$NAME" -e VERSION="$VERSION" -e E5_BUILD_EPOCH="${E5_BUILD_EPOCH:-}" -e CONTAINERS="$CONTAINERS" \
@@ -317,7 +321,8 @@ apk add iwinfo iw-full ip-full bash mount-utils luci-proto-modemmanager \
 # init script (which forbids loading the modules a connecting device needs)
 apk add pulseaudio-daemon-avahi pulseaudio-tools >/dev/null
 # Reuse the tested Debian hostless FE_ST_VOICE backend for cellular audio.
-apk add python3 glib2 libjson-c5 alsa-lib rpcd-mod-ucode ucode-mod-rtnl ucode-mod-nl80211 >/dev/null
+apk add --allow-untrusted /in/lpac/lpac-2.3.0-r1001.apk >/dev/null
+apk add python3 python3-openssl glib2 libjson-c5 alsa-lib rpcd-mod-ucode ucode-mod-rtnl ucode-mod-nl80211 >/dev/null
 if [ "$CONTAINERS" = 1 ]; then
     # Do not run dockerd post-install scripts inside the build container.
     apk add --no-scripts docker dockerd iptables-nft ip6tables-nft resize2fs >/dev/null
@@ -493,6 +498,7 @@ python3 /in/feature-source/tools/stage-flow-offload.py --root $R
 python3 /in/feature-source/tools/stage-ra-renew.py --root $R
 python3 /in/feature-source/installer/stage-ota.py --root $R
 python3 /in/feature-source/tools/release-ui-policy.py --root $R
+python3 /in/euicc-source/openwrt/stage-lpac.py --root $R --artifacts /in/lpac
 cd $R && tar -czf /out/$NAME .
 ls -la /out/$NAME
 '

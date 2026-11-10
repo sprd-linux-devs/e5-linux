@@ -25,7 +25,7 @@ sys.dont_write_bytecode = True
 OWNER = 'e5-linux-build-release-v1'
 PROFILES = ('e5', 't551m', 'm8', 't512n', 'yuanhang41s', 'k1', 'lym10k', 'changxing60')
 EXPERIMENTAL_PROFILES = ('y60',)
-COMMON = ('base', 'defaults', 'busybox', 'block_apk', 'wifi_apks')
+COMMON = ('base', 'defaults', 'busybox', 'block_apk', 'wifi_apks', 'lpac_apks')
 
 
 def write_json(path, value):
@@ -172,6 +172,7 @@ def input_check(common, rows):
     if json.loads(packages['STATE'].read_text()) != current:
         raise ValueError('ModemManager inputs stale: build openwrt/build-modemmanager.sh first')
     runpy.run_path(str(TOP / 'openwrt/wifi-sae-state.py'))['inspect'](common['wifi_apks'])
+    runpy.run_path(str(TOP / 'openwrt/lpac-state.py'))['inspect'](common['lpac_apks'])
     block = common['block_apk']
     expected = runpy.run_path(str(TOP / 'tools/ci-release.py'))['block_build_id']()
     if Path(str(block) + '.build-id').read_text().strip() != expected:

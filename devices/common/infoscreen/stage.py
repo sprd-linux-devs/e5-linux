@@ -297,6 +297,19 @@ def stage(root):
         if not web.is_symlink():
             web.mkdir(parents=True, exist_ok=True)
             (web / source.name).write_bytes(target.read_bytes())
+    # Attributed eSIM screen frontend, backed by the same firmware-owned jobs
+    # and AT queues as LuCI. No embedded package installer or second AT reader.
+    for source in (HERE / 'esim').iterdir():
+        if not source.is_file():
+            continue
+        target = root / 'etc/e5-infoscreen/plugins/esim' / source.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes().replace(b'\r\n', b'\n'))
+        target.chmod(0o644)
+        web = root / 'usr/share/e5-infoscreen/www/plugins/esim'
+        if not web.is_symlink():
+            web.mkdir(parents=True, exist_ok=True)
+            (web / source.name).write_bytes(target.read_bytes())
     luci = (HERE / 'base/luci-settings.js').read_text(encoding='utf-8')
     luci = replace(luci, "\t\to = s.option(form.Value, 'update_url',", """
 		for (var field of [
