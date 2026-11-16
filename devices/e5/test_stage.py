@@ -25,6 +25,7 @@ config = (root / 'etc/config/unisoc_modem').read_text()
 assert "lte_supported_bands '1,3,5,8,34,38,39,40,41'" in config
 assert 'snd-soc-sprd-pa-aw87xxx' in (root / 'opt/e5/e5-audio-dsp').read_text()
 assert not (root / 'etc/e5/t551m-persistent').exists()
+assert (root / 'etc/modules.d/e5-torch').read_text().split() == ['e5-aw3641-torch']
 vendor = (root / 'opt/e5/vendor-start.sh').read_text()
 assert vendor.index('nr_fixnv*|nr_runtimenv*') < vendor.index('[ -n "$n" ] && ln')
 assert 'for p in nr_modem nr_phy;' in vendor

@@ -247,6 +247,7 @@ def main():
         subprocess.run(['python3',str(TOP/'devices/common/test_power_probe.py'),
                         '--kernel',str(source)],check=True)
         if args.profile=='e5':
+            subprocess.run(['python3',str(TOP/'devices/e5/test_torch.py')],check=True)
             subprocess.run(['python3',str(TOP/'devices/e5/test_charger.py'),str(source)],check=True)
             subprocess.run(['python3',str(TOP/'devices/e5/test_charger_readback.py'),str(source)],check=True)
             subprocess.run(['python3',str(TOP/'devices/e5/test_otg_readback.py'),str(source)],check=True)

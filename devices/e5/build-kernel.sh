@@ -19,6 +19,7 @@ text = (top / 'upstream/e5-mainline.config').read_text()
 text = text.replace('CONFIG_LOCALVERSION="-e5"', 'CONFIG_LOCALVERSION="-e5-mobile4"')
 text = text.replace(' e5.openwrt=openwrt-mainline.ext4', '')
 text += '\n' + (top / 'devices/t551m/cpufreq/config').read_text()
+text += '\nCONFIG_LEDS_E5_AW3641=m\n'
 for key in ('SCSI', 'BLK_DEV_SD', 'USB_STORAGE', 'USB_UAS', 'EXFAT_FS', 'NTFS3_FS',
             'NLS_UTF8', 'USB_USBNET', 'USB_RTL8152', 'USB_NET_AX8817X',
             'USB_NET_AX88179_178A', 'USB_NET_CDCETHER', 'USB_NET_CDC_NCM',

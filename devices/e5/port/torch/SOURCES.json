@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "license": "GPL-2.0-only",
+  "stock": {
+    "model": "RongYue E5",
+    "fingerprint": "UNISOC/ums9158_1h10_cmcc/ums9158_1h10:13/TP1A.220624.014/2024112822:user/release-keys",
+    "kernel": "5.15.119-android13-8-gf0c1c2c751e6-dirty",
+    "module": "vendor_dlkm/lib/modules/flash_ic_aw3641.ko",
+    "sha256": "94d4451cc04d1c4086fb977fd5168b8fd8ea20c1f8e01d60ce68866b363b7683",
+    "evidence": "modules.load, live sprd,flash-aw3641 binding and disassembly of torch open/config/close",
+    "torch_sequence": "MODE low then EN high; close EN low then MODE low"
+  },
+  "reference": {
+    "repository": "https://github.com/MiCode/SPRD_kernel_module",
+    "branch": "arctic-w-oss",
+    "path": "common/camera/flash/aw3641/flash_ic_aw3641_drv.c",
+    "blob_sha": "d97ebf406e4dccc4129cfcaa4dc3495bb4331ff2",
+    "copyright": "Copyright (C) 2021-2022 UNISOC Communications Inc.",
+    "scope": "GPIO property names and GPL reference; the stock E5 binary determines actual sequence"
+  },
+  "scope": "Standard LED-class torch only; no unverified high-current flash/PWM mode"
+}

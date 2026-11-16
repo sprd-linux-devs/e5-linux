@@ -16,6 +16,7 @@ def apply(kernel):
         raise ValueError('Expected E5 kernel ' + COMMIT)
     runpy.run_path(str(SHARED.parent / 'common/display.py'))['apply'](kernel)
     runpy.run_path(str(Path(__file__).with_name('panel-dither.py')))['apply'](kernel)
+    runpy.run_path(str(Path(__file__).with_name('torch.py')))['apply'](kernel)
     runpy.run_path(str(SHARED.parent / 'common/usb-ncm.py'))['apply'](kernel)
     runpy.run_path(str(SHARED.parent / 'common/boot-optimization.py'))['apply'](kernel)
     runpy.run_path(str(SHARED.parent / 'common/power.py'))['apply'](kernel)

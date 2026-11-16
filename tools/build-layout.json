@@ -38,6 +38,8 @@
   "profiles": {
     "e5": {
       "kernel": "{workspace}/kernels/e5",
+      "torch_source": "{repo}/devices/e5/port/torch",
+      "torch_objects": "{workspace}/objects/e5-torch",
       "stock_boot": "/mnt/d/随身WiFi/荣悦E5刷机/spd_dump_for_ums9621/备份/boot_b.bin",
       "misc_head": "/mnt/d/随身WiFi/荣悦E5刷机/spd_dump_for_ums9621/备份/misc.bin"
     },

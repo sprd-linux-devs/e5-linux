@@ -1,0 +1,5 @@
+#!/bin/sh
+# No saved switch state: the LED driver is the authority, including at boot.
+[ "$(cat /etc/e5/device-profile 2>/dev/null)" = e5 ] || exit 0
+[ -r /sys/class/leds/e5:white:torch/brightness ] && exit 0
+exec modprobe e5-aw3641-torch

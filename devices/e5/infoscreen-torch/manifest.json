@@ -1,0 +1,11 @@
+{
+  "id": "torch",
+  "device_integration": "e5-aw3641-torch-v1",
+  "api_version": 2,
+  "version": "1.0.0",
+  "name": { "zh": "手电筒", "en": "Flashlight", "tr": "El feneri" },
+  "description": { "zh": "轻点开关照明", "en": "Tap to switch the light", "tr": "Işığı açıp kapatın" },
+  "entry": "index.html",
+  "order": 30,
+  "notifications": false
+}

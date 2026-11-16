@@ -19,6 +19,11 @@ CJK_SRC=/mnt/e5-disk/usr/share/fonts/opentype/noto
 CJK_DST=/usr/share/fonts/e5-noto
 
 start_service() {
+	# /etc/modules.d is retained by differential updates. Also load a newly
+	# delivered torch module here; the helper preserves an already-lit LED.
+	if [ -x /usr/libexec/e5-torch-start ]; then
+		/usr/libexec/e5-torch-start || logger -t e5-torch 'Flashlight driver is not ready'
+	fi
 	config_load e5-infoscreen
 	local enabled
 	config_get_bool enabled main enabled 1

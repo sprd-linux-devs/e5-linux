@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>手电筒</title>
+ <link rel="stylesheet" href="torch.css?v=1.0.0">
+</head>
+<body>
+ <main>
+  <button id="switch" type="button" aria-pressed="false" disabled>
+   <svg class="torch" viewBox="0 0 96 128" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <g class="rays"><path d="M48 5v10M18 14l7 8M78 14l-7 8M7 38l10 2M89 38l-10 2"/></g>
+    <path class="lens" d="M25 37h46v17H25z"/>
+    <path d="m25 54 12 17v39a6 6 0 0 0 6 6h10a6 6 0 0 0 6-6V71l12-17M37 71h22M37 104h22"/>
+    <path d="M44 84h8v10h-8z"/>
+   </svg>
+   <span id="state" role="status" aria-live="polite"></span>
+   <span id="hint"></span>
+  </button>
+  <p id="error" role="alert" hidden></p>
+  <button id="retry" type="button" hidden></button>
+ </main>
+ <script src="/sdk/e5.js"></script>
+ <script src="torch.js?v=1.0.0"></script>
+</body>
+</html>
