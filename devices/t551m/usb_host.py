@@ -2,6 +2,40 @@
 from pathlib import Path
 
 
+def gadget_udc_api(text):
+    """Keep the UDC core's private layout out of the vendor role driver."""
+    private = '''struct sprd_usb_udc {
+\tstruct usb_gadget_driver\t*driver;
+\tstruct usb_gadget\t\t*gadget;
+\tstruct device\t\t\tdev;
+\tstruct list_head\t\tlist;
+\tbool\t\t\t\tvbus;
+\tbool\t\t\t\tstarted;
+};
+
+'''
+    old = '''\t\tstruct sprd_usb_udc *sprd_udc = (struct sprd_usb_udc *)musb->g.udc;
+\t\tstruct usb_gadget *gadget = &musb->g;'''
+    new = '\t\tstruct usb_gadget *gadget = &musb->g;'
+    stop = '''\t\tif (sprd_udc)
+\t\t\tsprd_udc->vbus = false;
+
+\t\tgadget->ops->pullup(gadget, 0);'''
+    public = '''\t\t/* UDC internals change across kernels. Publish VBUS through the
+\t\t * core API and finish the disconnect before the role powers down.
+\t\t * This also keeps gadget->connected in sync with the pullup.
+\t\t */
+\t\tusb_udc_vbus_handler(gadget, false);
+\t\tusb_gadget_disconnect(gadget);'''
+    if public in text:
+        assert 'struct sprd_usb_udc' not in text, 'Stale private UDC layout'
+        return text
+    for before, after in ((private, ''), (old, new), (stop, public)):
+        assert text.count(before) == 1, 'Unexpected vendor UDC disconnect'
+        text = text.replace(before, after, 1)
+    return text
+
+
 def apply(kernel):
     # SPRD owns HCD registration in its role worker. Registering here too
     # leaks the probe-time root hub and lets two hubs suspend the same core.
@@ -79,7 +113,7 @@ def apply(kernel):
     # callback was not ported, so SESSION alone left gadget/suspend register
     # state behind and could never reliably enumerate a newly attached NIC.
     glue = kernel / 'drivers/usb/musb/musb_sprd.c'
-    text = glue.read_text()
+    text = gadget_udc_api(glue.read_text())
     start = text.index('static int musb_sprd_otg_start_host(')
     end = text.index('\nstatic ', start + 10)
     body = text[start:end]
@@ -101,7 +135,7 @@ def apply(kernel):
 \t\tspin_unlock_irq(&musb->lock);
 \t\tmusb_host_resume_root_hub(musb);''' + body[b:]
         text = text[:start] + body + text[end:]
-        glue.write_text(text)
+    glue.write_text(text)
 
     path = kernel / 'drivers/usb/musb/musb_host.c'
     text = path.read_text()
