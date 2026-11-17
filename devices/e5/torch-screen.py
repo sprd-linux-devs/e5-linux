@@ -4,11 +4,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
-def stage(root):
+def stage(root, profile=None):
     root = Path(root)
     marker = root / 'etc/e5/device-profile'
-    if not marker.is_file() or marker.read_text().strip() != 'e5':
+    profile = profile or (marker.read_text().strip() if marker.is_file() else None)
+    if profile != 'e5':
         return
+    if marker.is_file() and marker.read_text().strip() != 'e5':
+        raise ValueError('Torch staging profile does not match the root')
     app = root / 'usr/share/e5-infoscreen/builtin-apps/torch'
     app.mkdir(parents=True, exist_ok=True)
     for source in (HERE / 'infoscreen-torch').iterdir():

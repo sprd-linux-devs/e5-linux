@@ -150,7 +150,7 @@ def stage(root, profile='t551m'):
     shutil.copyfile(voltage_checker, voltage_target)
     voltage_target.chmod(0o755)
     runpy.run_path(str(Path(__file__).with_name('ui-cleanup.py')))['cleanup'](root)
-    runpy.run_path(str(TOP / 'devices/common/infoscreen/stage.py'))['stage'](root)
+    runpy.run_path(str(TOP / 'devices/common/infoscreen/stage.py'))['stage'](root, profile=profile)
     policy = TOP / 'tools/release-ui-policy.py'
     target = root / 'opt/e5/release-ui-policy'
     shutil.copyfile(policy, target)
@@ -178,13 +178,15 @@ if __name__ == '__main__':
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument('--root', type=Path)
     group.add_argument('--archive', type=Path)
+    ap.add_argument('--profile', default='t551m',
+                    choices=('e5','t551m','m8','t512n','yuanhang41s','k1','lym10k','changxing60','y60'))
     args = ap.parse_args()
     if args.root:
-        stage(args.root)
+        stage(args.root, profile=args.profile)
     else:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            stage(root)
+            stage(root, profile=args.profile)
             with tarfile.open(args.archive, 'w:gz') as archive:
                 for path in sorted(root.rglob('*')):
                     if path.is_symlink():
