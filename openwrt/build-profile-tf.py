@@ -134,6 +134,7 @@ def main():
     runpy.run_path(str(TOP / 'devices/t551m/network-startup.py'))['patch_root'](root, a.profile)
     runpy.run_path(str(TOP / 'openwrt/stage-lpac.py'))['install'](root, a.lpac_apks, a.apk_image)
     runpy.run_path(str(TOP / 'tools/stage-flow-offload.py'))['stage'](root)
+    runpy.run_path(str(TOP / 'tools/stage-ntp.py'))['stage'](root)
     # The SMS forward signs DingTalk webhooks with the openssl CLI and sends SMTP
     # through msmtp; the clean base carries the backend files without the packages.
     # (downloads.openwrt.org interrupts mid-index often enough that the same

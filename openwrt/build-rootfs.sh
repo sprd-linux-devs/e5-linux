@@ -504,6 +504,7 @@ chmod 0755 $R/usr/libexec/unisoc-modem/disable-stock-upgrade
 ucode $R/usr/libexec/unisoc-modem/disable-stock-upgrade $R
 python3 /in/feature-source/tools/stage-flow-offload.py --root $R
 python3 /in/feature-source/tools/stage-ra-renew.py --root $R
+python3 /in/feature-source/tools/stage-ntp.py --root $R
 python3 /in/feature-source/installer/stage-ota.py --root $R
 python3 /in/feature-source/tools/release-ui-policy.py --root $R
 python3 /in/euicc-source/openwrt/stage-lpac.py --root $R --artifacts /in/lpac
