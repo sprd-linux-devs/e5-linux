@@ -3,6 +3,7 @@
 'require poll';
 'require mu300.common as M';
 'require mu300.traffic-csv as TrafficCsv';
+'require mu300.traffic-controls as TrafficControls';
 
 function formatUsage(n) { return M.fmtTrafficBytes(n); }
 function trafficSlot() { return String(M.simSlot()); }
@@ -19,6 +20,7 @@ return view.extend({
 		var root = document.createElement('div'); root.className = 'mud';
 		root.innerHTML = `
 <style>
+.mud-tr-title{margin:0 0 16px;font-size:1.3rem}.mud-tr-toggle{display:flex;align-items:center;gap:10px;margin:12px 0}.mud-tr-toggle input{margin:0;flex:none}
 .mud-tr-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
 .mud-tr-summary .mud-card{min-width:0}.mud-tr-summary b{display:block;font-size:1.3rem;overflow-wrap:anywhere;margin:7px 0}
 .mud-tr-label{font-size:.8rem;color:var(--text-muted,#777)}.mud-tr-sub{font-size:.75rem;color:var(--text-subtle,var(--text-muted,#777));overflow-wrap:anywhere}
@@ -31,9 +33,11 @@ return view.extend({
 .mud-tr-warn{color:var(--warning,#b76d00)}.mud-tr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .mud-tr-scroll{overflow-x:auto}.mud-tr-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.8rem}
 .mud-tr-table th,.mud-tr-table td{padding:8px 4px;text-align:right;overflow-wrap:anywhere;border-bottom:1px solid var(--hairline,var(--border,#ddd))}.mud-tr-table th:first-child,.mud-tr-table td:first-child{text-align:left;width:30%}
-@media(max-width:1000px){.mud-tr-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.mud-tr-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:1000px){.mud-tr-title{margin:0 0 16px;font-size:1.3rem}.mud-tr-toggle{display:flex;align-items:center;gap:10px;margin:12px 0}.mud-tr-toggle input{margin:0;flex:none}
+.mud-tr-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.mud-tr-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.mud-tr-form{grid-template-columns:minmax(0,1fr)}.mud-tr-summary b{font-size:1.1rem}}
 </style>
+<h2 class="mud-tr-title">流量管理</h2>
 <div class="mud-tr-summary">
  <section class="mud-card"><span class="mud-tr-label">今日流量</span><b id="mud-tr-today">--</b><span class="mud-tr-sub" id="mud-tr-today-detail"></span></section>
  <section class="mud-card"><span class="mud-tr-label">当月流量</span><b id="mud-tr-month">--</b><span class="mud-tr-sub">自然月统计</span></section>
@@ -48,7 +52,7 @@ return view.extend({
 </section>
 <div class="mud-tr-grid">
  <section class="mud-card">
-  <h3>套餐与流量池</h3>
+  <h3>套餐设置</h3>
   <div class="mud-tr-field"><label for="mud-tr-plan_name">套餐名称</label><input id="mud-tr-plan_name" maxlength="128"></div>
   <div class="mud-tr-form">
    <div class="mud-tr-field"><label for="mud-tr-monthly_gb">每周期额度（GB）</label><input id="mud-tr-monthly_gb" type="number" min="0" max="100000" step="0.001"></div>
@@ -71,16 +75,17 @@ return view.extend({
  <h3>每月用量历史</h3>
  <div class="mud-tr-scroll"><table class="mud-tr-table"><thead><tr><th>月份</th><th>下行</th><th>上行</th><th>合计</th></tr></thead><tbody id="mud-tr-months"></tbody></table></div>
  <div class="mud-note" style="margin-top:12px">从启用统计时开始记录；统计约每 10 秒更新、每 60 秒保存。突然断电可能损失最近未保存的记录。</div>
- <div class="mud-note">本地网卡统计供参考，计费以运营商为准。额度用于显示和提醒，不会自动断网。</div>
+ <div class="mud-note">本地网卡统计供参考，计费以运营商为准。达量断网需单独启用保护。</div>
 </section>
-<section class="mud-card" style="margin-top:14px" id="mud-tr-csv"></section>`;
+<section class="mud-card" style="margin-top:14px" id="mud-tr-csv"></section>
+<div id="mud-tr-controls"></div>`;
 		M.localize(root); this.root = root; this.data = data || {};
-		this.fill(this.data.config || {}); this._csv = TrafficCsv.attach(this, M, trafficSlot, function(slot) { return 'SIM ' + (+slot + 1); }); this.paint(); this.wire();
+		this.fill(this.data.config || {}); this._csv = TrafficCsv.attach(this, M, trafficSlot, function(slot) { return 'SIM ' + (+slot + 1); }); this._controls = TrafficControls.attach(this, M, trafficSlot); this.paint(); this.wire();
 		var self = this; this._poll = function() { return self.refresh(); }; poll.add(this._poll, 10);
 		M.simSelector(root);
 		return root;
 	},
-	unload: function() { this._disposed = true; this._epoch++; if (this._poll) poll.remove(this._poll); },
+	unload: function() { this._disposed = true; this._epoch++; if (this._controls) this._controls.dispose(); if (this._poll) poll.remove(this._poll); },
 	q: function(k) { return this.root.querySelector('#mud-tr-' + k); },
 	fill: function(c) {
 		var self = this;
@@ -104,7 +109,7 @@ return view.extend({
 	},
 	paint: function() {
 		var d = this.data, s = d.status || {}, c = d.config || {}, self = this;
-		this._csv.update(d);
+		this._csv.update(d); this._controls.update(d);
 		this.q('today').textContent = formatUsage(s.today_used); this.q('month').textContent = formatUsage(s.month_used);
 		this.q('cycle').textContent = formatUsage(s.cycle_used);
 		this.q('remaining').textContent = s.remaining == null ? M.translate('不限量') : formatUsage(s.remaining);
@@ -143,7 +148,7 @@ return view.extend({
 	},
 	wire: function() {
 		var self = this;
-		this.root.querySelectorAll('input,select').forEach(function(input) { if (!input.closest('#mud-tr-csv')) input.addEventListener('input', function() { self._dirty = true; }); });
+		this.root.querySelectorAll('input,select').forEach(function(input) { if (!input.closest('#mud-tr-csv') && !input.closest('#mud-tr-controls')) input.addEventListener('input', function() { self._dirty = true; }); });
 		this.q('refresh').onclick = function() { self.refresh(); };
 		this.q('clear').onclick = function() {
 			if (self._csv.busy) return;
@@ -181,7 +186,7 @@ return view.extend({
 				M.confirmBox('校准本周期已用流量？', '这会将当前套餐周期已用值调整为输入值，每日和自然月记录不变。', {okText:'保存'});
 			confirmed.then(function(yes) {
 				if (!yes) return;
-				M.busy(self.q('save'), true); var toast = M.toast('正在保存流量池设置…', {type:'busy', timeout:0});
+				M.busy(self.q('save'), true); var toast = M.toast('正在保存流量设置…', {type:'busy', timeout:0});
 				L.resolveDefault(M.callTrafficSet(JSON.stringify(p), slot), {}).then(function(r) {
 					M.busy(self.q('save'), false);
 					if (!r.ok) toast.update(ERRORS[r.error] || '保存失败', 'error');

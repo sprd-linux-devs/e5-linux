@@ -464,6 +464,10 @@ def replay(stage):
 
 def main(args):
     op = args[0]
+    if op == 'restart':
+        with exclusive():
+            result = reconnect(bands=True)
+        return dict(ok=int(result.get('reconnect') != 'failed'), **result)
     if op == 'caps':
         return capabilities(len(args) > 1 and args[1] == 'lte')
     if op == 'start':

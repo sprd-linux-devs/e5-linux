@@ -21,7 +21,7 @@ with sync_playwright() as p:
                 busy:(btn,on)=>btn.disabled=on,set:(id,text)=>{const e=methods.v(id);if(e)e.textContent=text;},
                 pill:()=>'',fmtBytes:()=>'',fmtRate:()=>'',duration:()=>''};
             window.M=new Proxy(methods,{get:(o,k)=>o[k]||(()=> '')});
-            const L={resolveDefault:(p)=>Promise.resolve(p).catch(()=>null)};
+            const L={url:(...p)=>"/cgi-bin/luci/"+p.join("/"),resolveDefault:(p)=>Promise.resolve(p).catch(()=>null)};
             window.app=new Function('view','M','uci','L',code)({extend:x=>x},M,{},L);
             const root=document.querySelector('main');root.innerHTML=app.html();app.wire(root);
             window.setBoot=boot=>{

@@ -1019,6 +1019,45 @@ var DASH_I18N = {
 	'收到的短信会显示在这里，可尝试从 SIM 同步。': ['Received messages appear here. You can also sync from the SIM.', 'Gelen mesajlar burada görünür. SIM karttan da eşitleyebilirsiniz.'],
 	'选择发送卡不会切换移动数据卡。删除单条：点击气泡上的删除按钮。': ['Choosing a sending SIM does not switch mobile data. Use the delete button on a message to remove it.', 'Gönderen SIM seçimi mobil veriyi değiştirmez. Mesajı silmek için üzerindeki sil düğmesini kullanın.'],
 	'本机号码': ['Phone number', 'Telefon numarası'],
+	"流量管理": ["Traffic management", "Veri yönetimi"],
+	"套餐设置": ["Plan settings", "Paket ayarları"],
+	"正在保存流量设置…": ["Saving traffic settings…", "Veri ayarları kaydediliyor…"],
+	"达量断网": ["Quota cutoff", "Kota dolunca bağlantıyı kes"],
+	"启用当前卡保护": ["Protect this SIM", "Bu SIM için korumayı etkinleştir"],
+	"断网线（GB）": ["Cutoff threshold (GB)", "Kesme sınırı (GB)"],
+	"本周期已用": ["Usage this cycle", "Bu dönem kullanım"],
+	"距离断网": ["Remaining before cutoff", "Kesmeye kalan"],
+	"下次自动恢复": ["Next automatic recovery", "Sonraki otomatik bağlantı"],
+	"保存保护设置": ["Save protection settings", "Koruma ayarlarını kaydet"],
+	"定时重启网络": ["Scheduled network restart", "Zamanlanmış ağ yeniden başlatma"],
+	"启用每日定时重启": ["Enable daily restart", "Günlük yeniden başlatmayı etkinleştir"],
+	"每天执行时间": ["Daily execution time", "Günlük çalıştırma saati"],
+	"本地时间": ["Device local time", "Cihaz yerel saati"],
+	"上次执行": ["Last execution", "Son çalıştırma"],
+	"下次执行": ["Next execution", "Sonraki çalıştırma"],
+	"保存定时设置": ["Save schedule", "Zamanlamayı kaydet"],
+	"立即重启一次": ["Restart once now", "Şimdi bir kez yeniden başlat"],
+	"正在重启网络…": ["Restarting network…", "Ağ yeniden başlatılıyor…"],
+	"已完成": ["Completed", "Tamamlandı"],
+	"已跳过：射频关闭": ["Skipped: radio disabled", "Atlandı: radyo kapalı"],
+	"已跳过：WAN 已关闭": ["Skipped: WAN disabled", "Atlandı: WAN kapalı"],
+	"已跳过：达量保护生效": ["Skipped: quota protection active", "Atlandı: kota koruması etkin"],
+	"已跳过：错过执行时间": ["Skipped: scheduled time missed", "Atlandı: zamanlama kaçırıldı"],
+	"重启失败": ["Restart failed", "Yeniden başlatma başarısız"],
+	"管理服务暂不可用": ["Management service unavailable", "Yönetim hizmeti kullanılamıyor"],
+	"未启用": ["Disabled", "Devre dışı"],
+	"WAN 已停用": ["WAN disabled", "WAN devre dışı"],
+	"已达到断网线": ["Cutoff threshold reached", "Kesme sınırına ulaşıldı"],
+	"正常": ["Normal", "Normal"],
+	"立即重启网络？": ["Restart network now?", "Ağ şimdi yeniden başlatılsın mı?"],
+	"这会短暂中断当前上网卡的蜂窝网络，不重启系统或局域网。": ["This briefly interrupts the active SIM cellular connection. The system and LAN remain running.", "Etkin SIM hücresel bağlantısı kısa süre kesilir. Sistem ve yerel ağ çalışmaya devam eder."],
+	"按当前查看的 SIM 保存，使用上方套餐周期与计量方式。达到断网线时停用蜂窝 WAN，所有依赖此出口的设备断网；不关闭射频。关闭保护、周期重置或切换到未达量的上网卡后恢复。": ["Saved per viewed SIM, using the plan cycle and accounting mode above. At the threshold, cellular WAN is disabled for all devices using it; the radio stays on. It resumes when protection is disabled, the cycle resets, or the active SIM changes to one below its limit.", "Görüntülenen SIM için yukarıdaki paket dönemi ve ölçüm biçimiyle kaydedilir. Sınırda hücresel WAN ve onu kullanan cihazların interneti kesilir; radyo açık kalır. Koruma kapatılınca, dönem yenilenince veya sınırı aşmamış SIM seçilince bağlantı geri gelir."],
+	"约每 10 秒检查一次，可能有少量超出；本地统计与运营商计费可能不同。": ["Checked about every 10 seconds; a small overrun is possible. Local counters may differ from carrier billing.", "Yaklaşık 10 saniyede bir denetlenir; küçük bir aşım olabilir. Yerel sayaçlar operatör faturalamasından farklı olabilir."],
+	"全局设置，每次对当前上网卡执行与锁频后相同的蜂窝网络栈重启，不以是否处于 5G 为条件。不重启系统或局域网。射频、WAN 被手动关闭或达量保护生效时跳过。": ["Global schedule: restart the active SIM cellular stack using the same operation as a band change, regardless of 5G status. The system and LAN stay running. Skip if radio or WAN is disabled, or quota protection is active.", "Genel zamanlama: 5G durumundan bağımsız olarak etkin SIM hücresel yığını bant değişimiyle aynı işlemle yeniden başlatılır. Sistem ve yerel ağ çalışır. Radyo veya WAN kapalıysa ya da kota koruması etkinse atlanır."],
+	"网络会短暂中断。停机错过的任务不补执行；请先校准设备时间。": ["Connectivity is briefly interrupted. Missed tasks during downtime are not replayed; set the device clock first.", "Bağlantı kısa süre kesilir. Cihaz kapalıyken kaçırılan görevler sonradan çalıştırılmaz; önce cihaz saatini ayarlayın."],
+	"本地网卡统计供参考，计费以运营商为准。达量断网需单独启用保护。": ["Local counters are an estimate; carrier billing is authoritative. Enable quota protection separately to disconnect at a limit.", "Yerel sayaçlar tahminidir; operatör faturası esastır. Sınırda bağlantıyı kesmek için kota korumasını ayrıca etkinleştirin."],
+	'重启任务已提交': ['Restart task submitted', 'Yeniden başlatma görevi gönderildi'],
+	'保护检查失败': ['Protection check failed', 'Koruma denetimi başarısız'],
 	'流量池': ['Data plan', 'Veri paketi'],
 	'今日流量': ['Today’s data', 'Bugünkü veri'],
 	'当月流量': ['This month’s data', 'Bu ayki veri'],
@@ -2149,6 +2188,10 @@ html.mud-bootstrap-theme{--surface:var(--background-color-high);--surface-sunken
 .mud-bars i.on{background:currentColor}
 .mud-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:10px;margin-bottom:10px}
 .mud-kpi{background:var(--surface-sunken,rgba(127,127,127,.06));border-radius:var(--radius-base,.5rem);padding:9px 12px}
+.mud a.mud-kpi{display:block;color:inherit;text-decoration:none;cursor:default}
+.mud a.mud-kpi-link[href]{cursor:pointer;transition:background .15s}
+.mud a.mud-kpi-link[href]:hover{background:var(--hover-faint,rgba(127,127,127,.12))}
+.mud a.mud-kpi-link[href]:focus-visible{outline:2px solid var(--brand,#00958e);outline-offset:2px}
 .mud-kpi b{display:block;font-size:1.05rem;font-variant-numeric:tabular-nums;font-weight:700;line-height:1.25}
 .mud-kpi span{font-size:.68rem;color:var(--text-muted,var(--text-light,#777))}
 .mud-sub{font-size:.68rem;color:var(--text-subtle,var(--text-light,#999));font-variant-numeric:tabular-nums}

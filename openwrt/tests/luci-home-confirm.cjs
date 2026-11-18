@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname,
 const deferred = () => { let resolve, reject; const promise = new Promise((r,j) => { resolve = r; reject = j; }); return {promise, resolve, reject}; };
 function fixture(on = false) {
   const buttons = {}, confirmations = [], requests = [], jobs = [], toasts = [];
-  const root = {isConnected: true, querySelector(id) {
+  const root = {isConnected: true, querySelectorAll(){return [];}, querySelector(id) {
     return buttons[id] ||= {disabled: false, addEventListener() {}};
   }};
   const M = {

@@ -105,7 +105,6 @@ def main():
         # Avoid loading the same list twice under old aliases.
         for old in (f'etc/modules.d/usb-host-{kind}', f'etc/modules.d/56-usb-host-{kind}'):
             (root / old).unlink(missing_ok=True)
-    runpy.run_path(str(TOP / 'upstream/stage-root-modules.py'))['stage'](a.kernel, root)
     # apk handles the package database/dependencies; never copy just /sbin/block.
     run('docker', 'run', '--rm', '--platform', 'linux/arm64',
         '-v', f'{root}:/target', '-v', f'{a.block_apk.resolve()}:/input/block.apk:ro',
@@ -125,7 +124,7 @@ def main():
         'ucode /target/usr/libexec/unisoc-modem/limit-wifi-widths /target && '
         # Incremental builds must also add newly mandatory packages to old bases.
         'apk_retry --root /target update >/dev/null && '
-        'apk_retry --root /target --no-scripts add ttyd luci-app-ttyd luci-i18n-ttyd-zh-cn luci-i18n-ttyd-tr iw-full '
+        'apk_retry --root /target --no-scripts add dnsmasq-full ttyd luci-app-ttyd luci-i18n-ttyd-zh-cn luci-i18n-ttyd-tr iw-full '
         'python3-openssl ca-bundle rpcd-mod-ucode ucode-mod-fs ucode-mod-ubus ucode-mod-uci ucode-mod-uloop ucode-mod-rtnl ucode-mod-nl80211 && '
         'sh /target/usr/libexec/e5-ttyd-bind /target && '
         'ln -sf ../init.d/ttyd /target/etc/rc.d/S99ttyd && '
@@ -144,6 +143,20 @@ def main():
         'ok=; for n in 1 2 3; do apk --root /target --no-scripts add openssl-util msmtp && '
         '{ ok=1; break; }; echo "apk download interrupted (attempt $n), retrying" >&2; sleep 3; done; '
         '[ -n "$ok" ]')
+    # Distribution APK dependencies can unpack stock-kernel modules. The
+    # firmware uses the registered model kernel (including NF_CT_NETLINK).
+    module_root = root / 'lib/modules'
+    if module_root.is_symlink() or not module_root.resolve().is_relative_to(root.resolve()):
+        raise ValueError('Kernel module staging escaped the prepared root')
+    for directory in module_root.iterdir():
+        if directory.name != release:
+            if directory.is_symlink() or not directory.is_dir():
+                raise ValueError('Unexpected kernel module path: ' + str(directory))
+            shutil.rmtree(directory)
+    runpy.run_path(str(TOP / 'upstream/stage-root-modules.py'))['stage'](a.kernel, root)
+    packages = (root/'lib/apk/db/installed').read_text()
+    if not re.search(r'^P:dnsmasq-full$', packages, re.M) or re.search(r'^P:dnsmasq$', packages, re.M):
+        raise ValueError('Expected dnsmasq-full without a second reduced provider')
     forward = {}
     for pkg in ('openssl-util', 'msmtp'):
         match = re.search(rf'^P:{pkg}$\n^V:(\S+)$', (root / 'lib/apk/db/installed').read_text(), re.M)
