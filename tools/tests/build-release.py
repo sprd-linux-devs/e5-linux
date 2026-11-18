@@ -2,6 +2,7 @@
 """Build orchestration boundaries: no compilation, containers or device access."""
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import runpy
@@ -12,6 +13,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
+from contextlib import redirect_stdout
 
 TOP = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('build_release', TOP / 'tools/build-release.py')
@@ -20,6 +22,22 @@ verify_android=runpy.run_path(str(TOP/'installer/package_android.py'))['verify_a
 
 
 class Layout(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'Build CLI runs in WSL')
+    def test_default_all_and_explicit_y60_plan_selection(self):
+        registered = set(json.loads((TOP / 'tools/build-layout.json').read_text())['profiles'])
+        self.assertIn('y60', registered)
+        with tempfile.TemporaryDirectory() as folder:
+            workspace = Path(folder) / 'not-created'
+            cases = (([], registered), (['--profiles', 'all'], registered),
+                     (['--profiles', 'y60'], {'y60'}))
+            for arguments, expected in cases:
+                with self.subTest(arguments=arguments), patch.dict(os.environ), \
+                        patch.object(sys, 'argv', ['build-release.py', 'plan', '--workspace', str(workspace), *arguments]), \
+                        redirect_stdout(io.StringIO()) as output:
+                    build.main()
+                    self.assertEqual(set(json.loads(output.getvalue())['profiles']), expected)
+                self.assertFalse(workspace.exists())
+
     def test_epoch_zero_inputs_are_zip_compatible_without_changing_bytes_or_modes(self):
         prepare = runpy.run_path(str(TOP/'tools/prepare-installer-inputs.py'))
         with tempfile.TemporaryDirectory() as folder:

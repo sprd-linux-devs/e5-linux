@@ -1,3 +1,0 @@
-# Keep the existing keyboard/button failsafe path, with a one-second window.
-# The four-second OpenWrt default also waits when no debug level is selected.
-fs_failsafe_wait_timeout=1

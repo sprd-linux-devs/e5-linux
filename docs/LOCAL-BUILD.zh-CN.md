@@ -38,6 +38,9 @@ Windows/固件在本机完成；Apple Silicon App 可按用户授权使用上游
 
 ### 1. 只看计划和验证输入
 
+默认选择与 `--profiles all` 均包含九款：`e5 t551m m8 t512n yuanhang41s k1 lym10k changxing60 y60`。
+Y60 已纳入默认批次，无需另起任务；仍可用 `--profiles y60` 单独构建。各机型继续使用自身登记的内核、启动模板和硬件配置。
+
 安装器版本和三平台归档摘要由 `tools/installer-inputs.lock.json` 固定，
 缓存路径由 `tools/build-layout.json` 的 `{installer_revision}` 自动展开。
 它与 Pro 使用同一公共安装器及共享缓存，不复制 SDK、源码或根文件系统。

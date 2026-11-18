@@ -10,7 +10,7 @@ Windows 和固件在本机编译；Apple Silicon 安装器可以使用 GitHub ma
 - WSL：`Ubuntu-22.04`，用户 `kano`，仓库 `/mnt/d/Git/e5-linux`。
 - 唯一 Linux 工作区：`/home/kano/openwrt-build`。
 - Windows Python：`C:\Python312\python.exe`，Node/Rust 使用本机已有环境。
-- 全部机型：`e5 t551m m8 t512n yuanhang41s k1`。
+- `--profiles all` 默认包含九款：`e5 t551m m8 t512n yuanhang41s k1 lym10k changxing60 y60`；Y60 无需单独补打。
 - 新增 bring-up 机型：`lym10k`，独立触摸驱动及 ARM32 基带环境；见 `devices/lym10k/README.md`。
 - 输入路径由 `tools/build-layout.json` 登记。缺输入先报告，不随意换旧包。
 - 共用屏幕源码统一在 `devices/common/infoscreen/`，原生构建入口仍是 `devices/common/build-screen-native.py`；不要从历史 T551M 目录或旧发布包取屏幕源码。
@@ -109,7 +109,7 @@ sudo python3 tools/build-release.py package --workspace /home/kano/openwrt-build
 python3 tools/build-release.py status --workspace /home/kano/openwrt-build
 ```
 
-六个机型串行组包。成功的正式目录必须有 `BUILD-RUN.json`，校验 ZIP、
+九个机型串行组包。成功的正式目录必须有 `BUILD-RUN.json`，校验 ZIP、
 manifest、SHA-256 和单份 boot/rootfs。`.building-*` 不是正式包。
 失败保留现场，按 LOCAL-BUILD 的 `clean-staging` 规则处理，禁止另写 worker。
 打包期间不改源码；与 MU300 共用锁，不并行修改共享构建缓存。
