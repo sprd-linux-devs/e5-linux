@@ -266,7 +266,9 @@ def main():
             if layout == 'part':
                 image[44:1580] = partition_update_command(image).ljust(1536, b'\0')
             head = Path(temporary) / 'boot-head.img'
-            head.write_bytes(image[:boot['persist_log_offset']])
+            # Transport the writable prefix and matching AVB footer;
+            # retain the device's intervening persistent log area.
+            head.write_bytes(image[:boot['persist_log_offset']] + image[-64:])
             for name in ('openwrt.ext4.gz', 'ext4-tools.tar', 'device-install-image.sh',
                          'device-flash-boot.sh', 'device-stage-part-update.sh', 'e5-gpt', 'storage.sh', 'nv-persistence.py'):
                 upload(client, files / name, stage + '/' + name)

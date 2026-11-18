@@ -203,7 +203,8 @@ class HostImageCapacity(unittest.TestCase):
                     (files / name).write_bytes(b'fixture')
                 (files / 'boot.json').write_text(json.dumps({'persist_log_offset': 1 << 20}))
                 gui = SimpleNamespace(password='', ctx=SimpleNamespace(record={'plan': {'openwrt_bytes': capacity}}),
-                                      validate_ssh=Mock(), action=lambda name, operation: operation())
+                                      validate_ssh=Mock(), connect_ssh=Mock(),
+                                      action=lambda name, operation: operation())
                 commands = []
                 def execute(_client, command, **_options):
                     commands.append(command)
