@@ -20,6 +20,7 @@ echo "updating inactive Debian slot $target"
 gzip -dc "$ROOTFS" | dd of="$target" bs=4M conv=fsync
 [ "$(dd if="$target" bs=4M count=$((SIZE / 4194304)) 2>/dev/null | sha256sum | cut -d' ' -f1)" = "$EXPECT" ] || exit 1
 mount -t ext4 "$target" "$M"
+mkdir -p "$M/etc/e5"
 g=$(cat "$M/etc/e5/sd-gen" 2>/dev/null || echo 0); case "$g" in ''|*[!0-9]*) g=0 ;; esac
 g=$((g + 1)); echo debian > "$M/etc/e5/sd-system"; echo "$g" > "$M/etc/e5/sd-gen"; echo 1 > "$M/etc/e5/sd-trial"; sync; umount "$M"
 [ "$(sha256sum "$BOOT" | cut -d' ' -f1)" = "$(cat "$BOOT.sha256")" ] || exit 1

@@ -78,6 +78,7 @@ keep_config() {
              etc/uhttpd.crt etc/uhttpd.key etc/vnstat etc/e5-infoscreen etc/e5-sms \
              etc/unisoc-modem etc/e5-sounds etc/e5-cpu-voltage.json etc/bluetooth; do
         [ -e "$from/$p" ] || continue
+        mkdir -p "$N/${p%/*}" || return 1
         if [ -d "$from/$p" ] && [ -d "$N/$p" ]; then
             cp -a "$from/$p/." "$N/$p/"
         else
@@ -85,6 +86,7 @@ keep_config() {
             cp -a "$from/$p" "$N/$p"
         fi
     done
+    mkdir -p "$N/etc/e5" || return 1
     for f in image-version image-form build-time release.json; do
         rm -f "$N/etc/e5/$f"
         [ -f "/tmp/e5-img.$f" ] && mv "/tmp/e5-img.$f" "$N/etc/e5/$f"
