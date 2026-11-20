@@ -346,12 +346,12 @@ call)
             ubus -t 5 call unisoc.traffic "$method" "$params" 2>/dev/null || printf '{"ok":0,"error":"traffic_unavailable"}\n'
             ;;
         traffic_policy_get)
-            printf '%s' "$INPUT" | python3 "$DASH/traffic-policy" get || : ;;
+            printf '%s' "$INPUT" | ucode "$DASH/traffic-policy" get || : ;;
         traffic_policy_set)
             # JSON stays on stdin. The backend validates fields and slot scope.
-            inp '@.payload' | python3 "$DASH/traffic-policy" set || : ;;
+            inp '@.payload' | ucode "$DASH/traffic-policy" set || : ;;
         traffic_policy_run)
-            printf '%s' "$INPUT" | python3 "$DASH/traffic-policy" run || : ;;
+            printf '%s' "$INPUT" | ucode "$DASH/traffic-policy" run || : ;;
         traffic_get)
             ubus -t 3 call unisoc.traffic get "{\"slot\":\"$selected\"}" 2>/dev/null || printf '{"error":"traffic_unavailable"}\n'
             ;;

@@ -1,18 +1,18 @@
 {
   "format": 1,
-  "installer_commit": "d98925040c7f2e743b5c2528511bcb8e7b802222",
+  "installer_commit": "b07c0284d44f6a9150083f5118d604d518798f4f",
   "assets": {
     "installer_windows": {
-      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-d989250/installer-windows-x64-d989250.tar.gz",
-      "sha256": "45136c4006756b0d96b5993f1ac310e10b15789892b20d74d1c7f27dab87052a"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-b07c028/installer-windows-x64-b07c028.tar.gz",
+      "sha256": "8e30416d35cf6061570901ef5fdc482a1f910e2eb3e3e4ef5c27e543d170d628"
     },
     "installer_macos": {
-      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-d989250/installer-macos-arm64-d989250.tar.gz",
-      "sha256": "f0f131ce6a6fa12e63b4494ed05f808cf99a79d9ac0e43ba6ead026197878db5"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-b07c028/installer-macos-arm64-b07c028.tar.gz",
+      "sha256": "da8e2449f427bdb5a88329f75b2d9a271386d5d0e6acefb15268c5cef5216b8c"
     },
     "installer_android": {
-      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-d989250/installer-android-aarch64-d989250.tar.gz",
-      "sha256": "4ce64d659df00feda3efacecf58ef98729b802538507fe1e7c3de0b5ecd00b15"
+      "url": "https://github.com/kanoqwq/openwrt-tools/releases/download/build-tools-b07c028/installer-android-aarch64-b07c028.tar.gz",
+      "sha256": "7fac1b81d234d7e1660592c638f855665441b63d2b7db1b7c94af6ec602e7602"
     }
   }
 }

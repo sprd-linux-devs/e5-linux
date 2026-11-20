@@ -10,6 +10,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from traffic_policy_test_support import git_options
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / 'installer').is_dir())
 APP = 'luci-app-t551m' if (ROOT/'openwrt/luci-app-t551m').exists() else 'luci-app-mu300'
@@ -20,6 +21,7 @@ from test_ota import mu_release, analyze, Engine, Patch
 FILES = {
     'usr/libexec/unisoc-modem/traffic': 'root/usr/libexec/unisoc-modem/traffic',
     'usr/libexec/unisoc-modem/traffic-policy': 'root/usr/libexec/unisoc-modem/traffic-policy',
+    'usr/libexec/unisoc-modem/traffic-policy.uc': 'root/usr/libexec/unisoc-modem/traffic-policy.uc',
     'usr/libexec/rpcd/mu300dash': 'root/usr/libexec/rpcd/mu300dash',
     'www/luci-static/resources/mu300/traffic-controls.js': 'htdocs/luci-static/resources/mu300/traffic-controls.js',
     'www/luci-static/resources/view/mu300/traffic.js': 'htdocs/luci-static/resources/view/mu300/traffic.js',
@@ -54,9 +56,13 @@ class Delivery(unittest.TestCase):
     def test_first_and_subsequent_updates_keep_records_and_settings(self):
         current = {target: (SOURCE/rel).read_bytes() for target, rel in FILES.items()}
         previous = {}
+        git = git_options(ROOT)
+        revision = subprocess.check_output([*git,'rev-parse',os.environ.get('TRAFFIC_TEST_BASELINE','HEAD')+'^{commit}'],text=True).strip()
+        tracked = set(subprocess.check_output([*git,'ls-tree','-r','--name-only',revision],text=True).splitlines())
         for target, rel in FILES.items():
-            r = subprocess.run(['git', '-C', str(ROOT), 'show', 'HEAD:openwrt/' + APP + '/' + rel], capture_output=True)
-            if r.returncode == 0: previous[target] = r.stdout
+            path = 'openwrt/' + APP + '/' + rel
+            if path in tracked:
+                previous[target] = subprocess.check_output([*git,'show',revision+':' + path])
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory); live = base/'live'
             for name, content in previous.items():
@@ -70,7 +76,7 @@ class Delivery(unittest.TestCase):
                 path = live/name;path.parent.mkdir(parents=True, exist_ok=True);path.write_bytes(data)
             meta = live/'etc/mu300/release.json';meta.parent.mkdir(parents=True, exist_ok=True)
             meta.write_text(json.dumps(dict(profile='mu300', image_version='mu300-r1', kernel_release='7.2.8')))
-            for number, files in ((1, previous), (2, current), (3, dict(current, **{'usr/libexec/unisoc-modem/traffic-policy': current['usr/libexec/unisoc-modem/traffic-policy'] + b'\n# subsequent update\n'}))):
+            for number, files in ((1, previous), (2, current), (3, dict(current, **{'usr/libexec/unisoc-modem/traffic-policy': current['usr/libexec/unisoc-modem/traffic-policy'] + b'\n// subsequent update\n'}))):
                 release(base/str(number), 'mu300-r' + str(number), files)
             for start in (1, 2):
                 output = base/('patch%d.ota' % start)
@@ -78,10 +84,25 @@ class Delivery(unittest.TestCase):
                 self.assertTrue(result['can_export'], result['blockers'])
                 with Patch(output) as patch: Engine(live).apply(patch)
                 self.assertEqual((live/'usr/libexec/unisoc-modem/traffic-policy').read_bytes(),
-                                 current['usr/libexec/unisoc-modem/traffic-policy'] + (b'\n# subsequent update\n' if start == 2 else b''))
+                                 current['usr/libexec/unisoc-modem/traffic-policy'] + (b'\n// subsequent update\n' if start == 2 else b''))
+                self.assertEqual((live/'usr/libexec/unisoc-modem/traffic-policy.uc').read_bytes(),
+                                 current['usr/libexec/unisoc-modem/traffic-policy.uc'])
                 self.assertTrue((live/'usr/libexec/unisoc-modem/traffic-policy').stat().st_mode & 0o111)
                 self.assertEqual((live/'www/luci-static/resources/mu300/traffic-controls.js').read_bytes(), current['www/luci-static/resources/mu300/traffic-controls.js'])
                 for name, content in user.items(): self.assertEqual((live/name).read_bytes(), content)
+                # The updater exposes only its latest transaction. Test each
+                # migration's rollback before proceeding to the subsequent OTA.
+                engine = ROOT/'installer/runtime/luci-app-unisoc-ota/root/usr/lib/unisoc-ota/engine.py'
+                originals = previous if start == 1 else current
+                result = subprocess.run([sys.executable,str(engine),'rollback','--root',str(live)],
+                                        capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                for name, content in originals.items(): self.assertEqual((live/name).read_bytes(),content)
+                for name, content in user.items(): self.assertEqual((live/name).read_bytes(),content)
+                if start == 1:
+                    if 'usr/libexec/unisoc-modem/traffic-policy.uc' not in previous:
+                        self.assertFalse((live/'usr/libexec/unisoc-modem/traffic-policy.uc').exists())
+                    with Patch(output) as patch: Engine(live).apply(patch)
 
     def test_tracked_full_and_ordinary_update_delivery(self):
         self.assertIn('/etc/unisoc-modem/traffic/', (SOURCE/'root/lib/upgrade/keep.d/unisoc-traffic').read_text())
@@ -98,6 +119,7 @@ class Delivery(unittest.TestCase):
                 text = path.read_text()
                 if './usr/libexec/unisoc-modem/traffic-core.uc' in text:
                     self.assertIn('./usr/libexec/unisoc-modem/traffic-policy', text)
+                    self.assertIn('./usr/libexec/unisoc-modem/traffic-policy.uc', text)
                     self.assertIn('./www/luci-static/resources/mu300/traffic-controls.js', text)
 
 
